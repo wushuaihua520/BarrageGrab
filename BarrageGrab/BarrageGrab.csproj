@@ -11,7 +11,15 @@
   <ItemGroup>
     <PackageReference Include="Fleck" Version="1.2.0" />
     <PackageReference Include="Google.Protobuf" Version="3.25.2" />
+    <PackageReference Include="log4net" Version="2.0.15" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="RestSharp" Version="110.2.0" />
     <PackageReference Include="System.Net.WebSockets" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BarrageGrab.Entity\BarrageGrab.Entity.csproj" />
+    <ProjectReference Include="..\BarrageGrab.Framework\BarrageGrab.Framework.csproj" />
   </ItemGroup>
 
 </Project>

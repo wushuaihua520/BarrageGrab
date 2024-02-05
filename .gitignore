@@ -1,3 +1,7 @@
 /BarrageGrab/bin
 /BarrageGrab/obj
 /BarrageGrab/.vs
+/BarrageGrab.Entity/obj
+/BarrageGrab.Framework/obj
+/BarrageGrab.Entity/bin
+/BarrageGrab.Framework/bin

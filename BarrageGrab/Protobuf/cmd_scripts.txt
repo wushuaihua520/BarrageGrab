@@ -1,0 +1,1 @@
+protoc.exe --csharp_out=./ Douyin.proto

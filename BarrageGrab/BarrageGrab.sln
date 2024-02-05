@@ -5,6 +5,10 @@ VisualStudioVersion = 17.8.34525.116
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarrageGrab", "BarrageGrab.csproj", "{688E9F05-D436-460A-871A-50D883D7AD95}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarrageGrab.Entity", "..\BarrageGrab.Entity\BarrageGrab.Entity.csproj", "{2818BD7E-9044-441E-81D9-97335BD17B65}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BarrageGrab.Framework", "..\BarrageGrab.Framework\BarrageGrab.Framework.csproj", "{9CCAE5F6-43CD-41CF-A2A6-06708DB372A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{688E9F05-D436-460A-871A-50D883D7AD95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{688E9F05-D436-460A-871A-50D883D7AD95}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{688E9F05-D436-460A-871A-50D883D7AD95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2818BD7E-9044-441E-81D9-97335BD17B65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2818BD7E-9044-441E-81D9-97335BD17B65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2818BD7E-9044-441E-81D9-97335BD17B65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2818BD7E-9044-441E-81D9-97335BD17B65}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CCAE5F6-43CD-41CF-A2A6-06708DB372A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CCAE5F6-43CD-41CF-A2A6-06708DB372A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CCAE5F6-43CD-41CF-A2A6-06708DB372A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CCAE5F6-43CD-41CF-A2A6-06708DB372A9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
