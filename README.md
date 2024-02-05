@@ -31,13 +31,15 @@
 
 1).传输协议：**Google.Protobuf**，传送门：[https://github.com/protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf)
 
-2).WebSocket服务器：**Fleck，**传送门**：**[https://github.com/statianzo/Fleck](https://github.com/statianzo/Fleck)
+2).WebSocket服务器：**Fleck**，传送门**：**[https://github.com/statianzo/Fleck](https://github.com/statianzo/Fleck)
 
 3).WebSocket客户端：**System.Net.WebSockets**，传送门：[https://learn.microsoft.com/zh-cn/dotnet/api/system.net.websockets.websocket?view=net-8.0](https://learn.microsoft.com/zh-cn/dotnet/api/system.net.websockets.websocket?view=net-8.0)
 
 4).Rest请求：**RestSharp**，传送门：[https://restsharp.dev](https://restsharp.dev)
 
-## 使用说明（如果只是运行，完成第1步即可；如果要开发，需要完成第2步。）
+5).Json序列/反序列化：**Newtonsoft.Json**，传送门：[https://www.newtonsoft.com/json](https://www.newtonsoft.com/json)
+
+## 使用说明
 
 1. 安装.NET 8.0运行环境，官方下载地址：[https://dotnet.microsoft.com/zh-cn/download/dotnet/latest](https://dotnet.microsoft.com/zh-cn/download/dotnet/latest)
 2. 安装VisualStudio 2022，并升级到 **17.8+** 版本：
@@ -78,3 +80,13 @@
    ![1707033659294](Screenshots/README/1707033659294.png)
 
    The End.
+
+## 代码版本
+
+* 2024.02.06：v0.5.0
+
+  > 1.添加：抖音弹幕抓取服务，wss直连；
+  >
+
+  > 2.添加：本地WebSocket服务，监听任意IP，8888端口；
+  >
