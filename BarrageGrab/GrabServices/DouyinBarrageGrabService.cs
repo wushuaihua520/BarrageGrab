@@ -36,7 +36,9 @@ namespace BarrageGrab.GrabServices
         /// </summary>
         private string LiveId = string.Empty;
 
-
+        /// <summary>
+        /// websocket客户端
+        /// </summary>
         private ClientWebSocket? clientWebSocket;
 
 
@@ -84,7 +86,6 @@ namespace BarrageGrab.GrabServices
 
 
         #region Wss
-
         private string _wss = string.Empty;
         private string Wss
         {
@@ -363,6 +364,46 @@ namespace BarrageGrab.GrabServices
                                                 Type = MessageTypeEnum.Fansclub,
                                                 Message = FansclubMessage.Parser.ParseFrom(message.Payload)
                                             });
+
+                                            break;
+                                        }
+                                    #endregion
+
+                                    #region WebcastActivityEmojiGroupsMessage
+                                    case "WebcastActivityEmojiGroupsMessage":
+                                        {
+
+
+                                            break;
+                                        }
+                                    #endregion
+
+                                    #region WebcastRoomRankMessage
+                                    case "WebcastRoomRankMessage":
+                                        {
+
+
+                                            break;
+                                        }
+                                    #endregion
+
+                                    #region WebcastRoomStatsMessage
+                                    case "WebcastRoomStatsMessage":
+                                        {
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            {
+                                                Type = MessageTypeEnum.RoomStats,
+                                                Message = RoomStatsMessage.Parser.ParseFrom(message.Payload)
+                                            });
+
+                                            break;
+                                        }
+                                    #endregion
+
+                                    #region WebcastInRoomBannerMessage
+                                    case "WebcastInRoomBannerMessage":
+                                        {
+
 
                                             break;
                                         }

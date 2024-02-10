@@ -66,5 +66,11 @@ namespace BarrageGrab.Entity.Enums
         /// </summary>
         [Description("粉丝团")]
         Fansclub,
+
+        /// <summary>
+        /// 直播间状态
+        /// </summary>
+        [Description("直播间状态")]
+        RoomStats,
     }
 }

@@ -16,5 +16,12 @@ namespace BarrageGrab.GrabServices
         void Stop();
 
         void ReStart();
+
+
+        event EventHandler? OnOpen;
+        event EventHandler? OnMessage;
+        event EventHandler? OnError;
+        event EventHandler? OnClose;
+
     }
 }

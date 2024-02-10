@@ -1,4 +1,6 @@
 using BarrageGrab.Entity.Enums;
+using BarrageGrab.Framework;
+using BarrageGrab.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 namespace BarrageGrab
@@ -75,7 +77,12 @@ namespace BarrageGrab
                     return;
                 }
 
+                if (ApplicationRuntime.BarrageGrabService != null)
+                {
+                    ApplicationRuntime.BarrageGrabService.OnMessage += BarrageGrabService_OnMessage;
+                }
                 ApplicationRuntime.BarrageGrabService?.Start(liveUrl);
+
 
                 this.cbxPlatformType.Enabled = false;
                 this.txtLiveUrl.Enabled = false;
@@ -91,6 +98,11 @@ namespace BarrageGrab
                 this.btnGrab.Text = "¿ªÊ¼";
                 this.btnGrab.Tag = "Start";
             }
+
+        }
+
+        private void BarrageGrabService_OnMessage(object? sender, EventArgs e)
+        {
 
         }
     }
