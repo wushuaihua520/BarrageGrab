@@ -1,5 +1,5 @@
 syntax = "proto3";
-package BarrageGrab.Protobuf;
+package BarrageGrab.Entity.Protobuf.Douyin;
 
 message Response {
   repeated Message messagesList = 1;

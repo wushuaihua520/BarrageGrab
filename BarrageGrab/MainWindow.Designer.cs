@@ -156,7 +156,6 @@
             txtLiveUrl.Name = "txtLiveUrl";
             txtLiveUrl.Size = new Size(758, 30);
             txtLiveUrl.TabIndex = 0;
-            txtLiveUrl.Text = "700192154570";
             // 
             // cbxPlatformType
             // 

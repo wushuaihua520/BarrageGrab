@@ -10,10 +10,10 @@ namespace BarrageGrab.Entity.Models
     /// <summary>
     /// 弹幕消息实体模型
     /// </summary>
-    public class BarrageMessageModel
+    public class OpenBarrageMessage
     {
-        public MessageTypeEnum MessageType { get; set; }
+        public MessageTypeEnum Type { get; set; }
 
-        public object? Message { get; set; }
+        public object? Data { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using BarrageGrab.Entity.Enums;
+using BarrageGrab.Entity.Models.Douyin;
 using BarrageGrab.Framework;
-using BarrageGrab.Protobuf;
+using BarrageGrab.Entity.Protobuf.Douyin;
 using Google.Protobuf;
 using RestSharp;
 using System;
@@ -13,6 +14,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BarrageGrab.Framework.Utils;
+using BarrageGrab.Entity.Models;
 
 namespace BarrageGrab.GrabServices
 {
@@ -199,7 +202,7 @@ namespace BarrageGrab.GrabServices
                         #region if NeedAck
                         if (response.NeedAck)
                         {
-                            var ack = new PushFrame()
+                            PushFrame ack = new PushFrame()
                             {
                                 LogId = package.LogId,
                                 PayloadType = "ack",
@@ -226,11 +229,29 @@ namespace BarrageGrab.GrabServices
                                             //    Message = MemberMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Member,
+                                            //    Message = MemberMessage.Parser.ParseFrom(message.Payload)
+                                            //});
+
+                                            MemberMessage memberMsg = MemberMessage.Parser.ParseFrom(message.Payload);
+
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
                                             {
                                                 Type = MessageTypeEnum.Member,
-                                                Message = MemberMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                                Data = new DouyinMsgMember()
+                                                {
+                                                    MsgId = (long)memberMsg.Common.MsgId,
+                                                    Content = $"{memberMsg.User.NickName} 来了",
+                                                    RoomId = (long)memberMsg.Common.RoomId,
+                                                    WebRoomId = (long)memberMsg.Common.RoomId,
+                                                    MemberCount = (long)memberMsg.MemberCount,
+                                                    User = GetUser(memberMsg.User)
+                                                }
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
@@ -245,11 +266,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = SocialMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.Social,
-                                                Message = SocialMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Social,
+                                            //    Message = SocialMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -264,11 +285,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = ChatMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.Chat,
-                                                Message = ChatMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Chat,
+                                            //    Message = ChatMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -283,11 +304,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = LikeMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.Like,
-                                                Message = LikeMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Like,
+                                            //    Message = LikeMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -302,11 +323,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = GiftMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.Gift,
-                                                Message = GiftMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Gift,
+                                            //    Message = GiftMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -321,11 +342,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = RoomUserSeqMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.RoomUserSeq,
-                                                Message = RoomUserSeqMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.RoomUserSeq,
+                                            //    Message = RoomUserSeqMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -340,11 +361,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = ControlMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.Control,
-                                                Message = ControlMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Control,
+                                            //    Message = ControlMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -359,11 +380,11 @@ namespace BarrageGrab.GrabServices
                                             //    Message = FansclubMessage.Parser.ParseFrom(message.Payload)
                                             //});
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.Fansclub,
-                                                Message = FansclubMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.Fansclub,
+                                            //    Message = FansclubMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -390,11 +411,11 @@ namespace BarrageGrab.GrabServices
                                     #region WebcastRoomStatsMessage
                                     case "WebcastRoomStatsMessage":
                                         {
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            {
-                                                Type = MessageTypeEnum.RoomStats,
-                                                Message = RoomStatsMessage.Parser.ParseFrom(message.Payload)
-                                            });
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //{
+                                            //    Type = MessageTypeEnum.RoomStats,
+                                            //    Message = RoomStatsMessage.Parser.ParseFrom(message.Payload)
+                                            //});
 
                                             break;
                                         }
@@ -621,7 +642,42 @@ namespace BarrageGrab.GrabServices
         #endregion
 
 
+        #region MyRegion
+        private DouyinUser? GetUser(User data)
+        {
+            if (data == null)
+            {
+                return null;
+            }
 
+            DouyinUser user = new DouyinUser()
+            {
+                DisplayId = data.DisplayId,
+                ShortId = (long)data.ShortId,
+                Gender = (int)data.Gender,
+                Id = (long)data.Id,
+                Level = (int)data.Level,
+                PayLevel = (int)(data.PayGrade?.Level ?? -1),
+                NickName = data.NickName ?? "用户" + data.DisplayId,
+                AvatarUrl = data.AvatarThumb?.UrlListList?.FirstOrDefault() ?? "",
+                SecUid = data.SecUid,
+                FollowerCount = (long)(data.FollowInfo?.FollowerCount ?? 0),
+                FollowingCount = (long)(data.FollowInfo?.FollowingCount ?? 0),
+                FollowStatus = (long)(data.FollowInfo?.FollowStatus ?? 0)
+            };
+
+            if (data.FansClub != null && data.FansClub.Data != null)
+            {
+                user.FansClub = new DouyinFansClub()
+                {
+                    ClubName = data.FansClub.Data.ClubName,
+                    Level = data.FansClub.Data.Level
+                };
+            }
+
+            return user;
+        }
+        #endregion
 
 
         #endregion

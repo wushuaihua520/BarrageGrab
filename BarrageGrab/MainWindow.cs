@@ -1,6 +1,5 @@
 using BarrageGrab.Entity.Enums;
 using BarrageGrab.Framework;
-using BarrageGrab.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 
 namespace BarrageGrab
