@@ -9,7 +9,7 @@ namespace BarrageGrab.Entity.Models.Douyin
     /// <summary>
     /// 抖音用户
     /// </summary>
-    public class DouyinUser : DouyinMsgBase
+    public class DouyinUser 
     {
         /// <summary>
         /// 真实ID
@@ -59,7 +59,7 @@ namespace BarrageGrab.Entity.Models.Douyin
         /// <summary>
         /// 头像地址
         /// </summary>
-        public string? AvatarUrl { get; set; }
+        public string? Avatar { get; set; }
 
         /// <summary>
         /// 用户主页地址

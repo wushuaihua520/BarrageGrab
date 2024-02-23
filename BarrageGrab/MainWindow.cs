@@ -29,9 +29,6 @@ namespace BarrageGrab
             var platformList = new List<KeyValuePair<string, int>>();
             platformList.Add(new KeyValuePair<string, int>("¶¶Òô", 1));
 
-            this.cbxPlatformType.DataSource = platformList;
-            this.cbxPlatformType.DisplayMember = "Key";
-            this.cbxPlatformType.SelectedIndex = 0;
             #endregion
 
 
@@ -44,7 +41,7 @@ namespace BarrageGrab
                 this.txtConsole.AppendText(message); // + "\n"
                 this.txtConsole.ScrollToCaret();
 
-                if (++printCount > 10000)
+                if (++printCount > 100)
                 {
                     printCount = 0;
                     this.txtConsole.Clear();
@@ -83,7 +80,6 @@ namespace BarrageGrab
                 ApplicationRuntime.BarrageGrabService?.Start(liveUrl);
 
 
-                this.cbxPlatformType.Enabled = false;
                 this.txtLiveUrl.Enabled = false;
                 this.btnGrab.Text = "Í£Ö¹";
                 this.btnGrab.Tag = "Stop";
@@ -92,7 +88,6 @@ namespace BarrageGrab
             {
                 ApplicationRuntime.BarrageGrabService?.Stop();
 
-                this.cbxPlatformType.Enabled = true;
                 this.txtLiveUrl.Enabled = true;
                 this.btnGrab.Text = "¿ªÊ¼";
                 this.btnGrab.Tag = "Start";

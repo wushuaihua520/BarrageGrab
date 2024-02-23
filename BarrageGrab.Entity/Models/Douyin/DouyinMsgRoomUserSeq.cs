@@ -9,7 +9,7 @@ namespace BarrageGrab.Entity.Models.Douyin
     /// <summary>
     /// 抖音直播间统计消息
     /// </summary>
-    public class DouyinMsgUserSeq : DouyinMsgBase
+    public class DouyinMsgRoomUserSeq : DouyinMsgBase
     {
         /// <summary>
         /// 当前直播间用户数量

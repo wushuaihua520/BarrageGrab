@@ -31,6 +31,6 @@ namespace BarrageGrab.Entity.Models.Douyin
         /// <summary>
         /// web直播间ID
         /// </summary>
-        public long WebRoomId { get; set; }
+        //public long WebRoomId { get; set; }
     }
 }

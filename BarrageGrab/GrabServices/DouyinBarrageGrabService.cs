@@ -220,21 +220,9 @@ namespace BarrageGrab.GrabServices
                             {
                                 switch (message.Method)
                                 {
-                                    #region WebcastMemberMessage
+                                    #region WebcastMemberMessage 进入
                                     case "WebcastMemberMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<MemberMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Member,
-                                            //    Message = MemberMessage.Parser.ParseFrom(message.Payload)
-                                            //});
-
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Member,
-                                            //    Message = MemberMessage.Parser.ParseFrom(message.Payload)
-                                            //});
-
                                             MemberMessage memberMsg = MemberMessage.Parser.ParseFrom(message.Payload);
 
                                             OpenBarrageMessage obm = new OpenBarrageMessage()
@@ -245,7 +233,6 @@ namespace BarrageGrab.GrabServices
                                                     MsgId = (long)memberMsg.Common.MsgId,
                                                     Content = $"{memberMsg.User.NickName} 来了",
                                                     RoomId = (long)memberMsg.Common.RoomId,
-                                                    WebRoomId = (long)memberMsg.Common.RoomId,
                                                     MemberCount = (long)memberMsg.MemberCount,
                                                     User = GetUser(memberMsg.User)
                                                 }
@@ -257,138 +244,210 @@ namespace BarrageGrab.GrabServices
                                         }
                                     #endregion
 
-                                    #region WebcastSocialMessage
+                                    #region WebcastSocialMessage 关注 & 分享
                                     case "WebcastSocialMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<SocialMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Social,
-                                            //    Message = SocialMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            SocialMessage socialMessage = SocialMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Social,
-                                            //    Message = SocialMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            #region 分享
+                                            if (socialMessage.Action == 3)
+                                            {
+                                                OpenBarrageMessage obm = new OpenBarrageMessage()
+                                                {
+                                                    Type = MessageTypeEnum.Share,
+                                                    Data = new DouyinMsgShare()
+                                                    {
+                                                        MsgId = (long)socialMessage.Common.MsgId,
+                                                        Content = $"{socialMessage.User.NickName} 分享了直播间到{socialMessage.ShareTarget}",
+                                                        RoomId = (long)socialMessage.Common.RoomId,
+                                                        //ShareType = socialMessage.ShareTarget,
+                                                        User = GetUser(socialMessage.User)
+                                                    }
+                                                };
+
+                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            }
+                                            #endregion
+
+                                            #region 关注
+                                            else
+                                            {
+                                                OpenBarrageMessage obm = new OpenBarrageMessage()
+                                                {
+                                                    Type = MessageTypeEnum.Social,
+                                                    Data = new DouyinMsgSocial()
+                                                    {
+                                                        MsgId = (long)socialMessage.Common.MsgId,
+                                                        Content = $"{socialMessage.User.NickName} 关注了主播",
+                                                        RoomId = (long)socialMessage.Common.RoomId,
+                                                        User = GetUser(socialMessage.User)
+                                                    }
+                                                };
+
+                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            }
+                                            #endregion
 
                                             break;
                                         }
                                     #endregion
 
-                                    #region WebcastChatMessage
+                                    #region WebcastChatMessage 弹幕
                                     case "WebcastChatMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<ChatMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Chat,
-                                            //    Message = ChatMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            ChatMessage chatMessage = ChatMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Chat,
-                                            //    Message = ChatMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
+                                            {
+                                                Type = MessageTypeEnum.Chat,
+                                                Data = new DouyinMsgChat()
+                                                {
+                                                    MsgId = (long)chatMessage.Common.MsgId,
+                                                    Content = chatMessage.Content,
+                                                    RoomId = (long)chatMessage.Common.RoomId,
+                                                    User = GetUser(chatMessage.User)
+                                                }
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
                                     #endregion
 
-                                    #region WebcastLikeMessage
+                                    #region WebcastLikeMessage 点赞
                                     case "WebcastLikeMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<LikeMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Like,
-                                            //    Message = LikeMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            LikeMessage likeMessage = LikeMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Like,
-                                            //    Message = LikeMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
+                                            {
+                                                Type = MessageTypeEnum.Like,
+                                                Data = new DouyinMsgLike()
+                                                {
+                                                    MsgId = (long)likeMessage.Common.MsgId,
+                                                    Count = (long)likeMessage.Count,
+                                                    Total = (long)likeMessage.Total,
+                                                    Content = $"{likeMessage.User.NickName} 为主播点了{likeMessage.Count.ToString()}个赞，总点赞{likeMessage.Total.ToString()}",
+                                                    RoomId = (long)likeMessage.Common.RoomId,
+                                                    User = GetUser(likeMessage.User)
+                                                }
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
                                     #endregion
 
-                                    #region WebcastGiftMessage
+                                    #region WebcastGiftMessage 礼物
                                     case "WebcastGiftMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<GiftMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Gift,
-                                            //    Message = GiftMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            GiftMessage giftMessage = GiftMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Gift,
-                                            //    Message = GiftMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
+                                            {
+                                                Type = MessageTypeEnum.Gift,
+                                                Data = new DouyinMsgGift()
+                                                {
+                                                    MsgId = (long)giftMessage.Common.MsgId,
+                                                    GiftId = (long)giftMessage.GiftId,
+                                                    GiftName = giftMessage.Gift.Name,
+                                                    GiftCount = (long)giftMessage.RepeatCount,
+                                                    DiamondCount = (int)giftMessage.Gift.DiamondCount,
+                                                    Content = $"{giftMessage.User.NickName} 送出 {giftMessage.Gift.Name} x {giftMessage.RepeatCount.ToString()} 个",
+                                                    RoomId = (long)giftMessage.Common.RoomId,
+                                                    User = GetUser(giftMessage.User),
+                                                    ToUser = GetUser(giftMessage.ToUser)
+                                                }
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
                                     #endregion
 
-                                    #region WebcastRoomUserSeqMessage
+                                    #region WebcastRoomUserSeqMessage 统计
                                     case "WebcastRoomUserSeqMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<RoomUserSeqMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.RoomUserSeq,
-                                            //    Message = RoomUserSeqMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            RoomUserSeqMessage roomUserSeqMessage = RoomUserSeqMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.RoomUserSeq,
-                                            //    Message = RoomUserSeqMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
+                                            {
+                                                Type = MessageTypeEnum.RoomUserSeq,
+                                                Data = new DouyinMsgRoomUserSeq()
+                                                {
+                                                    MsgId = (long)roomUserSeqMessage.Common.MsgId,
+                                                    OnlineUserCount = roomUserSeqMessage.Total,
+                                                    TotalUserCount = roomUserSeqMessage.TotalUser,
+                                                    TotalUserCountStr = roomUserSeqMessage.TotalPvForAnchor,
+                                                    OnlineUserCountStr = roomUserSeqMessage.OnlineUserForAnchor,
+                                                    Content = $"当前直播间人数 {roomUserSeqMessage.OnlineUserForAnchor}，累计直播间人数 {roomUserSeqMessage.TotalPvForAnchor}",
+                                                    RoomId = (long)roomUserSeqMessage.Common.RoomId,
+                                                    User = null
+                                                }
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
                                     #endregion
 
-                                    #region WebcastControlMessage
+                                    #region WebcastControlMessage 直播间状态变更
                                     case "WebcastControlMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<ControlMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Control,
-                                            //    Message = ControlMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            ControlMessage controlMessage = ControlMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Control,
-                                            //    Message = ControlMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
+                                            {
+                                                Type = MessageTypeEnum.Control,
+                                                Data = new DouyinMsgControl()
+                                                {
+                                                    MsgId = (long)controlMessage.Common.MsgId,
+                                                    Content = controlMessage.Status == 3 ? "直播已结束" : "",
+                                                    RoomId = (long)controlMessage.Common.RoomId,
+                                                    User = null
+                                                }
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
                                     #endregion
 
-                                    #region WebcastFansclubMessage
+                                    #region WebcastFansclubMessage 粉丝团
                                     case "WebcastFansclubMessage":
                                         {
-                                            //OnMessage?.Invoke(clientWebSocket, new RoomMessageEventArgs<FansclubMessage>()
-                                            //{
-                                            //    Type = MessageTypeEnum.Fansclub,
-                                            //    Message = FansclubMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            FansclubMessage fansclubMessage = FansclubMessage.Parser.ParseFrom(message.Payload);
 
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
-                                            //{
-                                            //    Type = MessageTypeEnum.Fansclub,
-                                            //    Message = FansclubMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            DouyinMsgFansClub douyinMsgFansClub = new DouyinMsgFansClub()
+                                            {
+                                                MsgId = (long)fansclubMessage.CommonInfo.MsgId,
+                                                Type = fansclubMessage.Type,
+                                                Content = fansclubMessage.Content,
+                                                RoomId = (long)fansclubMessage.CommonInfo.RoomId,
+                                                User = GetUser(fansclubMessage.User)
+                                            };
+                                            if (douyinMsgFansClub.User != null && douyinMsgFansClub.User.FansClub != null)
+                                            {
+                                                douyinMsgFansClub.Level = douyinMsgFansClub.User.FansClub.Level;
+                                            }
+
+                                            OpenBarrageMessage obm = new OpenBarrageMessage()
+                                            {
+                                                Type = MessageTypeEnum.Fansclub,
+                                                Data = douyinMsgFansClub
+                                            };
+
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
                                     #endregion
+
 
                                     #region WebcastActivityEmojiGroupsMessage
                                     case "WebcastActivityEmojiGroupsMessage":
@@ -408,14 +467,21 @@ namespace BarrageGrab.GrabServices
                                         }
                                     #endregion
 
-                                    #region WebcastRoomStatsMessage
+                                    #region WebcastRoomStatsMessage 直播间状态
                                     case "WebcastRoomStatsMessage":
                                         {
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(new
+                                            //RoomStatsMessage roomStatsMessage = RoomStatsMessage.Parser.ParseFrom(message.Payload);
+
+                                            //OpenBarrageMessage obm = new OpenBarrageMessage()
                                             //{
-                                            //    Type = MessageTypeEnum.RoomStats,
-                                            //    Message = RoomStatsMessage.Parser.ParseFrom(message.Payload)
-                                            //});
+                                            //    Type = MessageTypeEnum.Control,
+                                            //    Data = new DouyinMsgRoomStats()
+                                            //    {
+
+                                            //    }
+                                            //};
+
+                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
 
                                             break;
                                         }
@@ -424,7 +490,6 @@ namespace BarrageGrab.GrabServices
                                     #region WebcastInRoomBannerMessage
                                     case "WebcastInRoomBannerMessage":
                                         {
-
 
                                             break;
                                         }
@@ -642,7 +707,7 @@ namespace BarrageGrab.GrabServices
         #endregion
 
 
-        #region MyRegion
+        #region private DouyinUser? GetUser(User data)
         private DouyinUser? GetUser(User data)
         {
             if (data == null)
@@ -659,7 +724,7 @@ namespace BarrageGrab.GrabServices
                 Level = (int)data.Level,
                 PayLevel = (int)(data.PayGrade?.Level ?? -1),
                 NickName = data.NickName ?? "用户" + data.DisplayId,
-                AvatarUrl = data.AvatarThumb?.UrlListList?.FirstOrDefault() ?? "",
+                Avatar = data.AvatarThumb?.UrlListList?.FirstOrDefault() ?? "",
                 SecUid = data.SecUid,
                 FollowerCount = (long)(data.FollowInfo?.FollowerCount ?? 0),
                 FollowingCount = (long)(data.FollowInfo?.FollowingCount ?? 0),

@@ -36,9 +36,15 @@
             label2 = new Label();
             label5 = new Label();
             groupBox2 = new GroupBox();
+            radio_huya = new RadioButton();
+            radio_tiktok = new RadioButton();
+            radio_acfun = new RadioButton();
+            radio_douyu = new RadioButton();
+            radio_bilibili = new RadioButton();
+            radio_kuaishou = new RadioButton();
+            radio_douyin = new RadioButton();
             txtConsole = new RichTextBox();
             txtLiveUrl = new TextBox();
-            cbxPlatformType = new ComboBox();
             label4 = new Label();
             label3 = new Label();
             btnGrab = new Button();
@@ -123,9 +129,15 @@
             // 
             // groupBox2
             // 
+            groupBox2.Controls.Add(radio_huya);
+            groupBox2.Controls.Add(radio_tiktok);
+            groupBox2.Controls.Add(radio_acfun);
+            groupBox2.Controls.Add(radio_douyu);
+            groupBox2.Controls.Add(radio_bilibili);
+            groupBox2.Controls.Add(radio_kuaishou);
+            groupBox2.Controls.Add(radio_douyin);
             groupBox2.Controls.Add(txtConsole);
             groupBox2.Controls.Add(txtLiveUrl);
-            groupBox2.Controls.Add(cbxPlatformType);
             groupBox2.Controls.Add(label4);
             groupBox2.Controls.Add(label3);
             groupBox2.Controls.Add(btnGrab);
@@ -136,6 +148,91 @@
             groupBox2.TabIndex = 4;
             groupBox2.TabStop = false;
             groupBox2.Text = "弹幕抓取服务";
+            // 
+            // radio_huya
+            // 
+            radio_huya.AutoSize = true;
+            radio_huya.Enabled = false;
+            radio_huya.Location = new Point(629, 38);
+            radio_huya.Name = "radio_huya";
+            radio_huya.Size = new Size(71, 28);
+            radio_huya.TabIndex = 6;
+            radio_huya.Tag = "7";
+            radio_huya.Text = "虎牙";
+            radio_huya.UseVisualStyleBackColor = true;
+            // 
+            // radio_tiktok
+            // 
+            radio_tiktok.AutoSize = true;
+            radio_tiktok.Enabled = false;
+            radio_tiktok.Location = new Point(535, 38);
+            radio_tiktok.Name = "radio_tiktok";
+            radio_tiktok.Size = new Size(88, 28);
+            radio_tiktok.TabIndex = 5;
+            radio_tiktok.Tag = "6";
+            radio_tiktok.Text = "Tiktok";
+            radio_tiktok.UseVisualStyleBackColor = true;
+            // 
+            // radio_acfun
+            // 
+            radio_acfun.AutoSize = true;
+            radio_acfun.Enabled = false;
+            radio_acfun.Location = new Point(444, 38);
+            radio_acfun.Name = "radio_acfun";
+            radio_acfun.Size = new Size(85, 28);
+            radio_acfun.TabIndex = 4;
+            radio_acfun.Tag = "5";
+            radio_acfun.Text = "Acfun";
+            radio_acfun.UseVisualStyleBackColor = true;
+            // 
+            // radio_douyu
+            // 
+            radio_douyu.AutoSize = true;
+            radio_douyu.Enabled = false;
+            radio_douyu.Location = new Point(367, 38);
+            radio_douyu.Name = "radio_douyu";
+            radio_douyu.Size = new Size(71, 28);
+            radio_douyu.TabIndex = 3;
+            radio_douyu.Tag = "4";
+            radio_douyu.Text = "斗鱼";
+            radio_douyu.UseVisualStyleBackColor = true;
+            // 
+            // radio_bilibili
+            // 
+            radio_bilibili.AutoSize = true;
+            radio_bilibili.Enabled = false;
+            radio_bilibili.Location = new Point(272, 38);
+            radio_bilibili.Name = "radio_bilibili";
+            radio_bilibili.Size = new Size(89, 28);
+            radio_bilibili.TabIndex = 2;
+            radio_bilibili.Tag = "3";
+            radio_bilibili.Text = "bilibili";
+            radio_bilibili.UseVisualStyleBackColor = true;
+            // 
+            // radio_kuaishou
+            // 
+            radio_kuaishou.AutoSize = true;
+            radio_kuaishou.Enabled = false;
+            radio_kuaishou.Location = new Point(195, 38);
+            radio_kuaishou.Name = "radio_kuaishou";
+            radio_kuaishou.Size = new Size(71, 28);
+            radio_kuaishou.TabIndex = 1;
+            radio_kuaishou.Tag = "2";
+            radio_kuaishou.Text = "快手";
+            radio_kuaishou.UseVisualStyleBackColor = true;
+            // 
+            // radio_douyin
+            // 
+            radio_douyin.AutoSize = true;
+            radio_douyin.Checked = true;
+            radio_douyin.Location = new Point(118, 38);
+            radio_douyin.Name = "radio_douyin";
+            radio_douyin.Size = new Size(71, 28);
+            radio_douyin.TabIndex = 0;
+            radio_douyin.TabStop = true;
+            radio_douyin.Tag = "1";
+            radio_douyin.Text = "抖音";
+            radio_douyin.UseVisualStyleBackColor = true;
             // 
             // txtConsole
             // 
@@ -156,15 +253,6 @@
             txtLiveUrl.Name = "txtLiveUrl";
             txtLiveUrl.Size = new Size(758, 30);
             txtLiveUrl.TabIndex = 0;
-            // 
-            // cbxPlatformType
-            // 
-            cbxPlatformType.DropDownStyle = ComboBoxStyle.DropDownList;
-            cbxPlatformType.FormattingEnabled = true;
-            cbxPlatformType.Location = new Point(118, 37);
-            cbxPlatformType.Name = "cbxPlatformType";
-            cbxPlatformType.Size = new Size(824, 32);
-            cbxPlatformType.TabIndex = 3;
             // 
             // label4
             // 
@@ -208,7 +296,7 @@
             Name = "MainWindow";
             Padding = new Padding(15, 10, 15, 10);
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "抖音快手bilibili直播弹幕wss直连（v0.5.0 - gitee/github:吴所畏惧）";
+            Text = "抖音快手bilibili直播弹幕wss直连（v1.0.0 - gitee/github:吴所畏惧）";
             FormClosed += MainWindow_FormClosed;
             Load += MainWindow_Load;
             groupBox1.ResumeLayout(false);
@@ -229,10 +317,16 @@
         private GroupBox groupBox2;
         private Label label3;
         private Label label4;
-        private ComboBox cbxPlatformType;
         private TextBox txtLiveUrl;
         private Button btnGrab;
         private RichTextBox txtConsole;
         private Label label5;
+        private RadioButton radio_douyin;
+        private RadioButton radio_kuaishou;
+        private RadioButton radio_bilibili;
+        private RadioButton radio_douyu;
+        private RadioButton radio_acfun;
+        private RadioButton radio_tiktok;
+        private RadioButton radio_huya;
     }
 }
