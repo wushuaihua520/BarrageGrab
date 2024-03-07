@@ -5,3 +5,5 @@
 /BarrageGrab.Framework/obj
 /BarrageGrab.Entity/bin
 /BarrageGrab.Framework/bin
+/BarrageGrab.Entity/Protobuf/Douyin/Kuaishou.cs
+/BarrageGrab.Entity/Protobuf/Douyin/Kuaishou.proto
