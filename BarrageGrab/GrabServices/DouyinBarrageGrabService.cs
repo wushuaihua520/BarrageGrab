@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using BarrageGrab.Framework.Utils;
 using BarrageGrab.Entity.Models;
+using Newtonsoft.Json;
 
 namespace BarrageGrab.GrabServices
 {
