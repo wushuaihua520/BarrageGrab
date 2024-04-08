@@ -186,6 +186,30 @@ namespace BarrageGrab.GrabServices
                     OnOpen?.Invoke(clientWebSocket, EventArgs.Empty);
 
 
+                    #region 发送hb心跳
+                    try
+                    {
+                        byte[] heartbeat = new byte[] { 0x3a, 0x02, 0x68, 0x62 };
+                        await clientWebSocket.SendAsync(new ArraySegment<byte>(heartbeat), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                        var heartbeatTimer = new System.Timers.Timer(10000);
+                        heartbeatTimer.Enabled = true;
+                        heartbeatTimer.Start();
+                        heartbeatTimer.Elapsed += (sender, e) =>
+                        {
+                            if (clientWebSocket != null)
+                            {
+                                clientWebSocket.SendAsync(new ArraySegment<byte>(heartbeat), WebSocketMessageType.Binary, true, CancellationToken.None);
+                            }
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        //do something
+                    }
+                    #endregion
+
+
                     //缓冲写大一些，就不用while循环分多次取
                     byte[] buffer = new byte[1024 * 1000];
 
