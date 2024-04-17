@@ -17,6 +17,7 @@ using System.Windows.Forms;
 using BarrageGrab.Framework.Utils;
 using BarrageGrab.Entity.Models;
 using Newtonsoft.Json;
+using System.Collections.Concurrent;
 
 namespace BarrageGrab.GrabServices
 {
@@ -132,6 +133,15 @@ namespace BarrageGrab.GrabServices
         public event EventHandler? OnClose;
 
 
+
+
+        //礼物计数缓存
+        ConcurrentDictionary<string, Tuple<int, DateTime>> giftCountCache = new ConcurrentDictionary<string, Tuple<int, DateTime>>();
+
+        System.Timers.Timer? giftCountTimer = null;
+
+
+
         #endregion
 
 
@@ -147,7 +157,27 @@ namespace BarrageGrab.GrabServices
         {
             LiveId = liveId;
 
+            giftCountTimer = new System.Timers.Timer(10000);
+            giftCountTimer.Elapsed += GiftCountTimer_Elapsed; ;
+            giftCountTimer.Start();
+
             this.ConnectWss();
+        }
+
+        private void GiftCountTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            var now = DateTime.Now;
+            var timeOutKeys = giftCountCache.Where(w => w.Value.Item2 < now.AddSeconds(-10) || w.Value == null).Select(s => s.Key).ToList();
+
+            //淘汰过期的礼物计数缓存
+            lock (giftCountCache)
+            {
+                timeOutKeys.ForEach(key =>
+                {
+                    giftCountCache.TryRemove(key, out _);
+
+                });
+            }
         }
 
         public void Stop()
@@ -197,10 +227,7 @@ namespace BarrageGrab.GrabServices
                         heartbeatTimer.Start();
                         heartbeatTimer.Elapsed += (sender, e) =>
                         {
-                            if (clientWebSocket != null)
-                            {
-                                clientWebSocket.SendAsync(new ArraySegment<byte>(heartbeat), WebSocketMessageType.Binary, true, CancellationToken.None);
-                            }
+                            clientWebSocket?.SendAsync(new ArraySegment<byte>(heartbeat), WebSocketMessageType.Binary, true, CancellationToken.None);
                         };
                     }
                     catch (Exception ex)
@@ -370,6 +397,53 @@ namespace BarrageGrab.GrabServices
                                         {
                                             GiftMessage giftMessage = GiftMessage.Parser.ParseFrom(message.Payload);
 
+                                            #region 计算礼物数
+                                            //string key = giftMessage.Common.RoomId.ToString() + "-" + giftMessage.GiftId.ToString() + "-" + giftMessage.GroupId.ToString();
+
+                                            //int currCount = (int)giftMessage.RepeatCount;
+                                            //int lastCount = 0;
+                                            ////Combo 为1时，表示为可连击礼物
+                                            //if (giftMessage.Gift.Combo)
+                                            //{
+                                            //    //判断礼物重复
+                                            //    if (giftMessage.RepeatEnd == 1)
+                                            //    {
+                                            //        //清除缓存中的key
+                                            //        if (giftMessage.GroupId > 0 && giftCountCache.ContainsKey(key))
+                                            //        {
+                                            //            giftCountCache.TryRemove(key, out _);
+                                            //        }
+                                            //        return;
+                                            //    }
+                                            //    var backward = currCount <= lastCount;
+                                            //    if (currCount <= 0) currCount = 1;
+
+                                            //    if (giftCountCache.ContainsKey(key))
+                                            //    {
+                                            //        lastCount = giftCountCache[key].Item1;
+                                            //        backward = currCount <= lastCount;
+                                            //        if (!backward)
+                                            //        {
+                                            //            lock (giftCountCache)
+                                            //            {
+                                            //                giftCountCache[key] = Tuple.Create(currCount, DateTime.Now);
+                                            //            }
+                                            //        }
+                                            //    }
+                                            //    else
+                                            //    {
+                                            //        if (giftMessage.GroupId > 0 && !backward)
+                                            //        {
+                                            //            giftCountCache.TryAdd(key, Tuple.Create(currCount, DateTime.Now));
+                                            //        }
+                                            //    }
+                                            //    //比上次小，则说明先后顺序出了问题，直接丢掉，应为比它大的消息已经处理过了
+                                            //    if (backward) return;
+                                            //}
+
+                                            //var count = currCount - lastCount;
+                                            #endregion
+
                                             OpenBarrageMessage obm = new OpenBarrageMessage()
                                             {
                                                 Type = MessageTypeEnum.Gift,
@@ -380,7 +454,7 @@ namespace BarrageGrab.GrabServices
                                                     GiftName = giftMessage.Gift.Name,
                                                     GiftCount = (long)giftMessage.RepeatCount,
                                                     DiamondCount = (int)giftMessage.Gift.DiamondCount,
-                                                    Content = $"{giftMessage.User.NickName} 送出 {giftMessage.Gift.Name} x {giftMessage.RepeatCount.ToString()} 个",
+                                                    Content = $"{giftMessage.User.NickName} 送出 {giftMessage.Gift.Name}{(giftMessage.Gift.Combo ? "(可连击)" : "")} x {giftMessage.RepeatCount}个", //，增量{count}个
                                                     RoomId = (long)giftMessage.Common.RoomId,
                                                     User = GetUser(giftMessage.User),
                                                     ToUser = GetUser(giftMessage.ToUser)
