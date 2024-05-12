@@ -296,7 +296,7 @@
             Name = "MainWindow";
             Padding = new Padding(15, 10, 15, 10);
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "抖音快手bilibili直播弹幕wss直连（v1.0.0 - gitee/github:吴所畏惧）";
+            Text = "抖音快手bilibili直播弹幕wss直连（v1.5.0 - gitee/github:吴所畏惧）";
             FormClosed += MainWindow_FormClosed;
             Load += MainWindow_Load;
             groupBox1.ResumeLayout(false);

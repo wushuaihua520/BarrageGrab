@@ -37,7 +37,7 @@ namespace BarrageGrab.GrabServices
         /// <summary>
         /// 直播id
         /// 若直播间Url为：https://live.douyin.com/751990192217
-        /// 那么 751990192217 既为 liveid
+        /// 那么 751990192217 就为 liveid
         /// </summary>
         private string LiveId = string.Empty;
 
@@ -238,7 +238,7 @@ namespace BarrageGrab.GrabServices
 
 
                     //缓冲写大一些，就不用while循环分多次取
-                    byte[] buffer = new byte[1024 * 1000];
+                    byte[] buffer = new byte[1024 * 10000];
 
                     //监听Socket信息，接收连接的套接字发来的数据
                     WebSocketReceiveResult result = await clientWebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
@@ -546,7 +546,6 @@ namespace BarrageGrab.GrabServices
                                             break;
                                         }
                                     #endregion
-
 
                                     #region WebcastActivityEmojiGroupsMessage
                                     case "WebcastActivityEmojiGroupsMessage":
