@@ -530,6 +530,7 @@ namespace BarrageGrab.GrabServices
                                                 RoomId = (long)fansclubMessage.CommonInfo.RoomId,
                                                 User = GetUser(fansclubMessage.User)
                                             };
+
                                             if (douyinMsgFansClub.User != null && douyinMsgFansClub.User.FansClub != null)
                                             {
                                                 douyinMsgFansClub.Level = douyinMsgFansClub.User.FansClub.Level;
