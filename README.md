@@ -50,7 +50,7 @@
 
 ### 1.抖音（开源版）
 
-![1718479730215](https://file+.vscode-resource.vscode-cdn.net/d%3A/Projects/Colloction/OpenSource/BarrageGrab/Screenshots/README/1718479730215.png)
+![1718480838061](Screenshots/README/1718480838061.png)
 
 ### 2.抖音（技术支持版）
 
