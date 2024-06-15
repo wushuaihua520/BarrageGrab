@@ -23,7 +23,7 @@ namespace BarrageGrab
 
         private void MainWindow_Load(object sender, EventArgs e)
         {
-            this.lblLocalWebSocket_Location.Text = GlobalConfig.LocalWebSocketServer_Location;
+            this.lblLocalWebSocket_Location.Text = GlobalConfigs.LocalWebSocketServer_Location;
 
             #region Platform
             var platformList = new List<KeyValuePair<string, int>>();
@@ -38,10 +38,10 @@ namespace BarrageGrab
         {
             this.Invoke(new Action(() =>
             {
-                this.txtConsole.AppendText(message); // + "\n"
+                this.txtConsole.AppendText(message + "\r\n");
                 this.txtConsole.ScrollToCaret();
 
-                if (++printCount > 100)
+                if (++printCount > 10000)
                 {
                     printCount = 0;
                     this.txtConsole.Clear();
@@ -69,14 +69,10 @@ namespace BarrageGrab
                 string liveUrl = this.txtLiveUrl.Text.Trim();
                 if (string.IsNullOrEmpty(liveUrl))
                 {
-                    MessageBox.Show("直播地址不能为空!", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("LiveId不能为空!", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                if (ApplicationRuntime.BarrageGrabService != null)
-                {
-                    ApplicationRuntime.BarrageGrabService.OnMessage += BarrageGrabService_OnMessage;
-                }
                 ApplicationRuntime.BarrageGrabService?.Start(liveUrl);
 
 
@@ -95,9 +91,10 @@ namespace BarrageGrab
 
         }
 
-        private void BarrageGrabService_OnMessage(object? sender, EventArgs e)
-        {
 
+        private void tsbtnAbout_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("本程序只用作学习交流，请勿用作非法用途。如有违背，责任自行承担。\r\nThis program is only for learning and communication purposes, please do not use it for illegal purposes. If there is any violation, the responsibility shall be borne by oneself.", "警告/Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
 }

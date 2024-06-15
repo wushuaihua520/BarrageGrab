@@ -18,15 +18,16 @@ using BarrageGrab.Framework.Utils;
 using BarrageGrab.Entity.Models;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
+using BarrageGrab.Framework.Helper;
 
 namespace BarrageGrab.GrabServices
 {
     /// <summary>
-    /// 抖音弹幕抓取
+    /// Douyin barrage grab service
     /// </summary>
     internal class DouyinBarrageGrabService : IBarrageGrabService, IDisposable
     {
-        #region 属性&字段
+        #region Attributes & Fields
 
         /// <summary>
         /// User-Agent
@@ -35,14 +36,14 @@ namespace BarrageGrab.GrabServices
 
 
         /// <summary>
-        /// 直播id
-        /// 若直播间Url为：https://live.douyin.com/751990192217
-        /// 那么 751990192217 就为 liveid
+        /// liveid
+        /// if live url is https://live.douyin.com/751990192217
+        /// so 751990192217 is the liveid
         /// </summary>
         private string LiveId = string.Empty;
 
         /// <summary>
-        /// websocket客户端
+        /// websocket client
         /// </summary>
         private ClientWebSocket? clientWebSocket;
 
@@ -113,33 +114,24 @@ namespace BarrageGrab.GrabServices
 
 
         /// <summary>
-        /// 连接建立时触发
+        /// on open
         /// </summary>
         public event EventHandler? OnOpen;
 
         /// <summary>
-        /// 客户端接收服务端数据时触发
+        /// on message
         /// </summary>
         public event EventHandler? OnMessage;
 
         /// <summary>
-        /// 通信发生错误时触发
+        /// on error
         /// </summary>
         public event EventHandler? OnError;
 
         /// <summary>
-        /// 连接关闭时触发
+        /// on close
         /// </summary>
         public event EventHandler? OnClose;
-
-
-
-
-        //礼物计数缓存
-        ConcurrentDictionary<string, Tuple<int, DateTime>> giftCountCache = new ConcurrentDictionary<string, Tuple<int, DateTime>>();
-
-        System.Timers.Timer? giftCountTimer = null;
-
 
 
         #endregion
@@ -157,32 +149,21 @@ namespace BarrageGrab.GrabServices
         {
             LiveId = liveId;
 
-            giftCountTimer = new System.Timers.Timer(10000);
-            giftCountTimer.Elapsed += GiftCountTimer_Elapsed; ;
-            giftCountTimer.Start();
-
             this.ConnectWss();
-        }
-
-        private void GiftCountTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
-        {
-            var now = DateTime.Now;
-            var timeOutKeys = giftCountCache.Where(w => w.Value.Item2 < now.AddSeconds(-10) || w.Value == null).Select(s => s.Key).ToList();
-
-            //淘汰过期的礼物计数缓存
-            lock (giftCountCache)
-            {
-                timeOutKeys.ForEach(key =>
-                {
-                    giftCountCache.TryRemove(key, out _);
-
-                });
-            }
         }
 
         public void Stop()
         {
-            clientWebSocket?.Abort();
+            try
+            {
+                clientWebSocket?.Abort();
+                clientWebSocket?.Dispose();
+                clientWebSocket = null;
+            }
+            catch (Exception ex)
+            {
+                // do something
+            }
         }
 
         public void ReStart()
@@ -205,7 +186,7 @@ namespace BarrageGrab.GrabServices
             {
                 try
                 {
-                    //连接
+                    //connect
                     await clientWebSocket.ConnectAsync(new Uri(Wss), CancellationToken.None);
 
                     if (clientWebSocket.State != WebSocketState.Open && clientWebSocket.State != WebSocketState.Connecting)
@@ -249,7 +230,7 @@ namespace BarrageGrab.GrabServices
                         #region 处理消息
                         //将接收到的数据写到缓冲里
                         var package = PushFrame.Parser.ParseFrom(new MemoryStream(buffer, 0, result.Count));
-                        var response = Response.Parser.ParseFrom(Decompress(package.Payload.ToArray()));
+                        var response = Response.Parser.ParseFrom(DecompressHelper.Decompress(package.Payload.ToArray()));
 
                         #region if NeedAck
                         if (response.NeedAck)
@@ -290,7 +271,9 @@ namespace BarrageGrab.GrabServices
                                                 }
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[进入]{memberMsg.User.NickName} 来了");
 
                                             break;
                                         }
@@ -317,7 +300,9 @@ namespace BarrageGrab.GrabServices
                                                     }
                                                 };
 
-                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                                ApplicationRuntime.MainForm?.PrintConsole($"[分享]{socialMessage.User.NickName} 分享了直播间到{socialMessage.ShareTarget}");
                                             }
                                             #endregion
 
@@ -336,7 +321,9 @@ namespace BarrageGrab.GrabServices
                                                     }
                                                 };
 
-                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                                ApplicationRuntime.MainForm?.PrintConsole($"[关注]{socialMessage.User.NickName} 关注了主播");
                                             }
                                             #endregion
 
@@ -361,7 +348,9 @@ namespace BarrageGrab.GrabServices
                                                 }
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[弹幕]{chatMessage.User.NickName} 说 {chatMessage.Content}");
 
                                             break;
                                         }
@@ -386,7 +375,9 @@ namespace BarrageGrab.GrabServices
                                                 }
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[点赞]{likeMessage.User.NickName} 点了 {likeMessage.Count.ToString()} 个赞");
 
                                             break;
                                         }
@@ -396,53 +387,6 @@ namespace BarrageGrab.GrabServices
                                     case "WebcastGiftMessage":
                                         {
                                             GiftMessage giftMessage = GiftMessage.Parser.ParseFrom(message.Payload);
-
-                                            #region 计算礼物数
-                                            //string key = giftMessage.Common.RoomId.ToString() + "-" + giftMessage.GiftId.ToString() + "-" + giftMessage.GroupId.ToString();
-
-                                            //int currCount = (int)giftMessage.RepeatCount;
-                                            //int lastCount = 0;
-                                            ////Combo 为1时，表示为可连击礼物
-                                            //if (giftMessage.Gift.Combo)
-                                            //{
-                                            //    //判断礼物重复
-                                            //    if (giftMessage.RepeatEnd == 1)
-                                            //    {
-                                            //        //清除缓存中的key
-                                            //        if (giftMessage.GroupId > 0 && giftCountCache.ContainsKey(key))
-                                            //        {
-                                            //            giftCountCache.TryRemove(key, out _);
-                                            //        }
-                                            //        return;
-                                            //    }
-                                            //    var backward = currCount <= lastCount;
-                                            //    if (currCount <= 0) currCount = 1;
-
-                                            //    if (giftCountCache.ContainsKey(key))
-                                            //    {
-                                            //        lastCount = giftCountCache[key].Item1;
-                                            //        backward = currCount <= lastCount;
-                                            //        if (!backward)
-                                            //        {
-                                            //            lock (giftCountCache)
-                                            //            {
-                                            //                giftCountCache[key] = Tuple.Create(currCount, DateTime.Now);
-                                            //            }
-                                            //        }
-                                            //    }
-                                            //    else
-                                            //    {
-                                            //        if (giftMessage.GroupId > 0 && !backward)
-                                            //        {
-                                            //            giftCountCache.TryAdd(key, Tuple.Create(currCount, DateTime.Now));
-                                            //        }
-                                            //    }
-                                            //    //比上次小，则说明先后顺序出了问题，直接丢掉，应为比它大的消息已经处理过了
-                                            //    if (backward) return;
-                                            //}
-
-                                            //var count = currCount - lastCount;
-                                            #endregion
 
                                             OpenBarrageMessage obm = new OpenBarrageMessage()
                                             {
@@ -461,7 +405,9 @@ namespace BarrageGrab.GrabServices
                                                 }
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[礼物]{giftMessage.User.NickName} 送出 {giftMessage.RepeatCount.ToString()} 个 {giftMessage.Gift.Name}");
 
                                             break;
                                         }
@@ -488,7 +434,9 @@ namespace BarrageGrab.GrabServices
                                                 }
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[人气统计]当前直播间人数 {roomUserSeqMessage.OnlineUserForAnchor}，累计直播间人数 {roomUserSeqMessage.TotalPvForAnchor}");
 
                                             break;
                                         }
@@ -511,7 +459,9 @@ namespace BarrageGrab.GrabServices
                                                 }
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
+
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[系统]当前直播已结束");
 
                                             break;
                                         }
@@ -542,53 +492,9 @@ namespace BarrageGrab.GrabServices
                                                 Data = douyinMsgFansClub
                                             };
 
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
+                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
 
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastActivityEmojiGroupsMessage
-                                    case "WebcastActivityEmojiGroupsMessage":
-                                        {
-
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastRoomRankMessage
-                                    case "WebcastRoomRankMessage":
-                                        {
-
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastRoomStatsMessage 直播间状态
-                                    case "WebcastRoomStatsMessage":
-                                        {
-                                            //RoomStatsMessage roomStatsMessage = RoomStatsMessage.Parser.ParseFrom(message.Payload);
-
-                                            //OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            //{
-                                            //    Type = MessageTypeEnum.Control,
-                                            //    Data = new DouyinMsgRoomStats()
-                                            //    {
-
-                                            //    }
-                                            //};
-
-                                            //ApplicationRuntime.LocalWebSocketServer?.Broadcast(obm);
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastInRoomBannerMessage
-                                    case "WebcastInRoomBannerMessage":
-                                        {
+                                            ApplicationRuntime.MainForm?.PrintConsole($"[粉丝团]{fansclubMessage.User.NickName} 加入了主播粉丝团");
 
                                             break;
                                         }
@@ -604,26 +510,20 @@ namespace BarrageGrab.GrabServices
                         #endregion
 
 
-                        //继续保持监听
+                        //keep receive
                         if (clientWebSocket.State == WebSocketState.Open)
                         {
                             result = await clientWebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                         }
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     OnError?.Invoke(clientWebSocket, EventArgs.Empty);
 
                     // do something
-
-
                 }
             });
-
-
-
-
         }
 
 
@@ -633,25 +533,7 @@ namespace BarrageGrab.GrabServices
 
         #region 方法
 
-        #region private byte[] Decompress(byte[] zippedData)
-        private byte[] Decompress(byte[] zippedData)
-        {
-            MemoryStream ms = new MemoryStream(zippedData);
-            GZipStream compressedzipStream = new GZipStream(ms, CompressionMode.Decompress);
-            MemoryStream outBuffer = new MemoryStream();
-            byte[] block = new byte[1024];
-            while (true)
-            {
-                int bytesRead = compressedzipStream.Read(block, 0, block.Length);
-                if (bytesRead <= 0)
-                    break;
-                else
-                    outBuffer.Write(block, 0, bytesRead);
-            }
-            compressedzipStream.Close();
-            return outBuffer.ToArray();
-        }
-        #endregion
+
 
 
 
@@ -686,7 +568,7 @@ namespace BarrageGrab.GrabServices
                 {
                     try
                     {
-                        using (RestClient client = new RestClient(GlobalConfig.LiveUrl_Douyin))
+                        using (RestClient client = new RestClient(GlobalConfigs.LiveUrl_Douyin))
                         {
                             RestRequest request = new RestRequest($"/{LiveId}", Method.Get);
                             request.AddHeader("User-Agent", UserAgent);
@@ -739,7 +621,7 @@ namespace BarrageGrab.GrabServices
         {
             try
             {
-                using (RestClient client = new RestClient(GlobalConfig.LiveUrl_Douyin))
+                using (RestClient client = new RestClient(GlobalConfigs.LiveUrl_Douyin))
                 {
                     RestRequest request = new RestRequest($"/{LiveId}", Method.Get);
 
@@ -777,30 +659,46 @@ namespace BarrageGrab.GrabServices
         private string GetWss()
         {
             StringBuilder wss = new StringBuilder();
-            wss.Append($"wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/?");
-            wss.Append("app_name=douyin_web&version_code=180800&webcast_sdk_version=1.3.0&update_version_code=1.3.0");
-            wss.Append("&compress=gzip");
-            wss.Append($"&internal_ext=internal_src:dim|wss_push_room_id:{RoomId}|wss_push_did:{RoomId}");
-            wss.Append("|dim_log_id:202302171547011A160A7BAA76660E13ED|fetch_time:1676620021641|seq:1|wss_info:0-1676");
-            wss.Append("620021641-0-0|wrds_kvs:WebcastRoomStatsMessage-1676620020691146024_WebcastRoomRankMessage-167661");
-            wss.Append("9972726895075_AudienceGiftSyncData-1676619980834317696_HighlightContainerSyncData-2&cursor=t-1676");
-            wss.Append("620021641_r-1_d-1_u-1_h-1");
-            wss.Append("&host=https://live.douyin.com&aid=6383&live_id=1");
-            wss.Append("&did_rule=3&debug=false&endpoint=live_pc&support_wrds=1&");
-            wss.Append($"im_path=/webcast/im/fetch/&user_unique_id={RoomId}&");
-            wss.Append("device_platform=web&cookie_enabled=true&screen_width=1440&screen_height=900&browser_language=zh&");
-            wss.Append("browser_platform=MacIntel&browser_name=Mozilla&");
-            wss.Append("browser_version=5.0%20(Macintosh;%20Intel%20Mac%20OS%20X%2010_15_7)%20AppleWebKit/537.36%20(KHTML,%20");
-            wss.Append("like%20Gecko)%20Chrome/110.0.0.0%20Safari/537.36&");
-            wss.Append("browser_online=true&tz_name=Asia/Shanghai&identity=audience&");
-            wss.Append($"room_id={RoomId}&heartbeatDuration=0&signature=00000000");
+            wss.Append($"wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/");
+            wss.Append($"?app_name=douyin_web");
+            wss.Append($"&version_code=180800");
+            wss.Append($"&webcast_sdk_version=1.3.0");
+            wss.Append($"&update_version_code=1.3.0");
+            wss.Append($"&compress=gzip");
+            wss.Append($"&internal_ext=internal_src:dim|wss_push_room_id:{RoomId}|wss_push_did:{RoomId}|dim_log_id:202302171547011A160A7BAA76660E13ED|fetch_time:1676620021641|seq:1|wss_info:0-1676620021641-0-0|wrds_kvs:WebcastRoomStatsMessage-1676620020691146024_WebcastRoomRankMessage-1676619972726895075_AudienceGiftSyncData-1676619980834317696_HighlightContainerSyncData-2");
+            wss.Append($"&cursor=t-1676620021641_r-1_d-1_u-1_h-1");
+            wss.Append($"&host=https://live.douyin.com");
+            wss.Append($"&aid=6383");
+            wss.Append($"&live_id=1");
+            wss.Append($"&did_rule=3");
+            wss.Append($"&debug=false");
+            wss.Append($"&endpoint=live_pc");
+            wss.Append($"&support_wrds=1");
+            wss.Append($"&im_path=/webcast/im/fetch/");
+            wss.Append($"&user_unique_id={RoomId}");
+            wss.Append($"&device_platform=web");
+            wss.Append($"&cookie_enabled=true");
+            wss.Append($"&screen_width=1440");
+            wss.Append($"&screen_height=900");
+            wss.Append($"&browser_language=zh");
+            wss.Append($"&browser_platform=MacIntel");
+            wss.Append($"&browser_name=Mozilla");
+            wss.Append($"&browser_version=5.0%20(Macintosh;%20Intel%20Mac%20OS%20X%2010_15_7)%20AppleWebKit/537.36%20(KHTML,%20like%20Gecko)%20Chrome/110.0.0.0%20Safari/537.36");
+            wss.Append($"&browser_online=true");
+            wss.Append($"&tz_name=Asia/Shanghai");
+            wss.Append($"&identity=audience");
+            wss.Append($"&room_id={RoomId}");
+            wss.Append($"&heartbeatDuration=0");
+
+            //signature=00000000 wss并没有进行签名，稳定性肯定没签名过的稳定。如需签名及算法，请咨询群主
+            wss.Append($"&signature=00000000");
 
             return wss.ToString();
         }
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+
         }
 
         #endregion

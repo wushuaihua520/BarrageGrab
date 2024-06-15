@@ -17,13 +17,6 @@ namespace BarrageGrab
 
             //运行主窗体
             Application.Run(ApplicationRuntime.MainForm);
-
-            //Application.ApplicationExit += Application_ApplicationExit;
-        }
-
-        private static void Application_ApplicationExit(object? sender, EventArgs e)
-        {
-
         }
     }
 }

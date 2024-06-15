@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 namespace BarrageGrab
 {
     /// <summary>
-    /// 全局配置
+    /// global configs
     /// </summary>
-    internal static class GlobalConfig
+    internal static class GlobalConfigs
     {
         /// <summary>
         /// 本地WebSocket服务器发布地址

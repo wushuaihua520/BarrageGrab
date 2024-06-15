@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace BarrageGrab.GrabServices
 {
     /// <summary>
-    /// 弹幕抓取服务规范接口
+    /// barrage grab service interface
     /// </summary>
     internal interface IBarrageGrabService
     {
@@ -17,10 +17,12 @@ namespace BarrageGrab.GrabServices
 
         void ReStart();
 
-
         event EventHandler? OnOpen;
+
         event EventHandler? OnMessage;
+
         event EventHandler? OnError;
+
         event EventHandler? OnClose;
 
     }

@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace BarrageGrab.Websocket
 {
     /// <summary>
-    /// 本地WebSocket服务器类
+    /// local websocket server
     /// </summary>
     internal class LocalWebSocketServer : IDisposable
     {
@@ -38,18 +38,25 @@ namespace BarrageGrab.Websocket
         #region public void Run()
         public void Start()
         {
-            if (socketServer == null)
+            try
             {
-                socketServer = new WebSocketServer(GlobalConfig.LocalWebSocketServer_Location);
-            }
+                if (socketServer == null)
+                {
+                    socketServer = new WebSocketServer(GlobalConfigs.LocalWebSocketServer_Location);
+                }
 
-            //异常重启
-            socketServer.RestartAfterListenError = true;
-            socketServer.Start(ListenWebSocketConnection);
+                //restart
+                socketServer.RestartAfterListenError = true;
+                socketServer.Start(ListenWebSocketConnection);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Local webSocket server fail to start：" + ex.Message);
+            }
         }
         #endregion
 
-        #region public void ReBoot()
+        #region public void ReStart()
         public void ReStart()
         {
             if (socketServer != null)
@@ -116,15 +123,12 @@ namespace BarrageGrab.Websocket
 
         #region public void Broadcast(string message)
         /// <summary>
-        /// 广播
+        /// Broadcast
         /// </summary>
         /// <param name="message"></param>
-        public async Task Broadcast(object message)
+        public async Task Broadcast(string message)
         {
-            //打印控制台（这句代码不应该写这里，我是为了测试方便，有空再挪）
-            ApplicationRuntime.MainForm?.PrintConsole(JsonConvert.SerializeObject(message));
-
-            //广播给所有连接的客户端
+            //Broadcast to all clients
             if (clientList == null || clientList.Count == 0)
             {
                 return;
@@ -136,7 +140,7 @@ namespace BarrageGrab.Websocket
             {
                 if (client.Value.IsAvailable)
                 {
-                    await client.Value.Send(JsonConvert.SerializeObject(message));
+                    await client.Value.Send(message);
                 }
                 else
                 {
@@ -153,12 +157,20 @@ namespace BarrageGrab.Websocket
             }
         }
 
-        public void Dispose()
-        {
-            throw new NotImplementedException();
-        }
         #endregion
 
 
+        public void Dispose()
+        {
+            if (socketServer != null)
+            {
+                socketServer.Dispose();
+                socketServer = null;
+            }
+
+            clientList = null;
+
+            removeList = null;
+        }
     }
 }
