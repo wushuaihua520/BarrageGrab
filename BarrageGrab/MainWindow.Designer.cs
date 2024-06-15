@@ -59,7 +59,7 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(9, 29);
+            label1.Location = new Point(50, 29);
             label1.Margin = new Padding(2, 0, 2, 0);
             label1.Name = "label1";
             label1.Size = new Size(68, 17);
@@ -69,7 +69,7 @@
             // btnReBoot_LocalWebSocket
             // 
             btnReBoot_LocalWebSocket.Font = new Font("Microsoft YaHei UI", 8F);
-            btnReBoot_LocalWebSocket.Location = new Point(141, 53);
+            btnReBoot_LocalWebSocket.Location = new Point(182, 53);
             btnReBoot_LocalWebSocket.Margin = new Padding(2);
             btnReBoot_LocalWebSocket.Name = "btnReBoot_LocalWebSocket";
             btnReBoot_LocalWebSocket.Size = new Size(38, 21);
@@ -91,7 +91,7 @@
             groupBox1.Margin = new Padding(2);
             groupBox1.Name = "groupBox1";
             groupBox1.Padding = new Padding(2);
-            groupBox1.Size = new Size(464, 87);
+            groupBox1.Size = new Size(547, 87);
             groupBox1.TabIndex = 3;
             groupBox1.TabStop = false;
             groupBox1.Text = "本地WebSocket服务";
@@ -100,7 +100,7 @@
             // 
             lblLocalWebSocket_Location.AutoSize = true;
             lblLocalWebSocket_Location.ForeColor = Color.Red;
-            lblLocalWebSocket_Location.Location = new Point(80, 29);
+            lblLocalWebSocket_Location.Location = new Point(121, 29);
             lblLocalWebSocket_Location.Margin = new Padding(2, 0, 2, 0);
             lblLocalWebSocket_Location.Name = "lblLocalWebSocket_Location";
             lblLocalWebSocket_Location.Size = new Size(104, 17);
@@ -111,7 +111,7 @@
             // 
             lblLocalWebSocket_Status.AutoSize = true;
             lblLocalWebSocket_Status.ForeColor = Color.Green;
-            lblLocalWebSocket_Status.Location = new Point(80, 55);
+            lblLocalWebSocket_Status.Location = new Point(121, 55);
             lblLocalWebSocket_Status.Margin = new Padding(2, 0, 2, 0);
             lblLocalWebSocket_Status.Name = "lblLocalWebSocket_Status";
             lblLocalWebSocket_Status.Size = new Size(44, 17);
@@ -121,7 +121,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(9, 55);
+            label2.Location = new Point(50, 55);
             label2.Margin = new Padding(2, 0, 2, 0);
             label2.Name = "label2";
             label2.Size = new Size(68, 17);
@@ -132,7 +132,7 @@
             // 
             label5.AutoSize = true;
             label5.ForeColor = Color.Fuchsia;
-            label5.Location = new Point(249, 29);
+            label5.Location = new Point(290, 29);
             label5.Margin = new Padding(2, 0, 2, 0);
             label5.Name = "label5";
             label5.Size = new Size(206, 17);
@@ -158,7 +158,7 @@
             groupBox2.Margin = new Padding(2);
             groupBox2.Name = "groupBox2";
             groupBox2.Padding = new Padding(2);
-            groupBox2.Size = new Size(464, 402);
+            groupBox2.Size = new Size(547, 402);
             groupBox2.TabIndex = 4;
             groupBox2.TabStop = false;
             groupBox2.Text = "弹幕抓取服务";
@@ -167,7 +167,7 @@
             // 
             radio_huya.AutoSize = true;
             radio_huya.Enabled = false;
-            radio_huya.Location = new Point(405, 25);
+            radio_huya.Location = new Point(446, 25);
             radio_huya.Margin = new Padding(2);
             radio_huya.Name = "radio_huya";
             radio_huya.Size = new Size(50, 21);
@@ -180,7 +180,7 @@
             // 
             radio_tiktok.AutoSize = true;
             radio_tiktok.Enabled = false;
-            radio_tiktok.Location = new Point(345, 25);
+            radio_tiktok.Location = new Point(386, 25);
             radio_tiktok.Margin = new Padding(2);
             radio_tiktok.Name = "radio_tiktok";
             radio_tiktok.Size = new Size(62, 21);
@@ -193,7 +193,7 @@
             // 
             radio_acfun.AutoSize = true;
             radio_acfun.Enabled = false;
-            radio_acfun.Location = new Point(288, 25);
+            radio_acfun.Location = new Point(329, 25);
             radio_acfun.Margin = new Padding(2);
             radio_acfun.Name = "radio_acfun";
             radio_acfun.Size = new Size(58, 21);
@@ -206,7 +206,7 @@
             // 
             radio_douyu.AutoSize = true;
             radio_douyu.Enabled = false;
-            radio_douyu.Location = new Point(239, 25);
+            radio_douyu.Location = new Point(280, 25);
             radio_douyu.Margin = new Padding(2);
             radio_douyu.Name = "radio_douyu";
             radio_douyu.Size = new Size(50, 21);
@@ -219,7 +219,7 @@
             // 
             radio_bilibili.AutoSize = true;
             radio_bilibili.Enabled = false;
-            radio_bilibili.Location = new Point(178, 25);
+            radio_bilibili.Location = new Point(219, 25);
             radio_bilibili.Margin = new Padding(2);
             radio_bilibili.Name = "radio_bilibili";
             radio_bilibili.Size = new Size(60, 21);
@@ -232,7 +232,7 @@
             // 
             radio_kuaishou.AutoSize = true;
             radio_kuaishou.Enabled = false;
-            radio_kuaishou.Location = new Point(129, 25);
+            radio_kuaishou.Location = new Point(170, 25);
             radio_kuaishou.Margin = new Padding(2);
             radio_kuaishou.Name = "radio_kuaishou";
             radio_kuaishou.Size = new Size(50, 21);
@@ -245,7 +245,7 @@
             // 
             radio_douyin.AutoSize = true;
             radio_douyin.Checked = true;
-            radio_douyin.Location = new Point(80, 25);
+            radio_douyin.Location = new Point(121, 25);
             radio_douyin.Margin = new Padding(2);
             radio_douyin.Name = "radio_douyin";
             radio_douyin.Size = new Size(50, 21);
@@ -271,7 +271,7 @@
             // 
             // txtLiveUrl
             // 
-            txtLiveUrl.Location = new Point(80, 51);
+            txtLiveUrl.Location = new Point(121, 51);
             txtLiveUrl.Margin = new Padding(2);
             txtLiveUrl.Name = "txtLiveUrl";
             txtLiveUrl.Size = new Size(311, 23);
@@ -280,7 +280,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(23, 53);
+            label4.Location = new Point(64, 53);
             label4.Margin = new Padding(2, 0, 2, 0);
             label4.Name = "label4";
             label4.Size = new Size(54, 17);
@@ -290,7 +290,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(9, 26);
+            label3.Location = new Point(50, 26);
             label3.Margin = new Padding(2, 0, 2, 0);
             label3.Name = "label3";
             label3.Size = new Size(68, 17);
@@ -300,7 +300,7 @@
             // btnGrab
             // 
             btnGrab.Font = new Font("Microsoft YaHei UI", 8F);
-            btnGrab.Location = new Point(395, 50);
+            btnGrab.Location = new Point(436, 50);
             btnGrab.Margin = new Padding(2);
             btnGrab.Name = "btnGrab";
             btnGrab.Size = new Size(60, 25);
@@ -315,7 +315,7 @@
             toolStrip1.Items.AddRange(new ToolStripItem[] { tsbtnAbout });
             toolStrip1.Location = new Point(10, 7);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new Size(464, 25);
+            toolStrip1.Size = new Size(547, 25);
             toolStrip1.TabIndex = 5;
             toolStrip1.Text = "toolStrip1";
             // 
@@ -333,7 +333,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(484, 534);
+            ClientSize = new Size(567, 534);
             Controls.Add(groupBox2);
             Controls.Add(groupBox1);
             Controls.Add(toolStrip1);
@@ -343,7 +343,7 @@
             Name = "MainWindow";
             Padding = new Padding(10, 7, 10, 7);
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "抖音快手视频号Tiktokwss弹幕助手（v1.8.0）";
+            Text = "抖音快手Tiktok视频号WSS弹幕助手(v1.8.0) by 吴所畏惧 VX：xhhdqq";
             FormClosed += MainWindow_FormClosed;
             Load += MainWindow_Load;
             groupBox1.ResumeLayout(false);

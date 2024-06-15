@@ -4,8 +4,6 @@
 
 抖音/快手/视频号/Tiktok/bilibibli/斗鱼/Acfun/虎牙/YY/战旗/花椒等直播间弹幕，wss直连，非系统代理方式，无需多开浏览器窗口，且获取到弹幕数据后自定义转发。
 
-![1718479148962](Screenshots/README/1718479148962.png)
-
 ## 测试记录
 
 | 测试时间        | 抖音           | 快手           | 视频号         | Tiktok         |
@@ -48,17 +46,21 @@
 
 ![1717560096527](Screenshots/README/1717560096527.png)
 
-## 效果图（技术支持版）
+## 效果图
 
-### 1.抖音
+### 1.抖音（开源版）
+
+![1718479730215](https://file+.vscode-resource.vscode-cdn.net/d%3A/Projects/Colloction/OpenSource/BarrageGrab/Screenshots/README/1718479730215.png)
+
+### 2.抖音（技术支持版）
 
 ![1718471828625](Screenshots/README/1718471828625.png)
 
-### 2.快手
+### 3.快手（技术支持版）
 
 ![1718475893272](Screenshots/README/1718475893272.png)
 
-### 3.Tiktok
+### 4.Tiktok（技术支持版）
 
 ![1718475750398](Screenshots/README/1718475750398.png)
 
