@@ -19,6 +19,8 @@ using BarrageGrab.Entity.Models;
 using Newtonsoft.Json;
 using System.Collections.Concurrent;
 using BarrageGrab.Framework.Helper;
+using BarrageGrab.Entity.Requests;
+using System.Text.Json.Nodes;
 
 namespace BarrageGrab.GrabServices
 {
@@ -41,6 +43,9 @@ namespace BarrageGrab.GrabServices
         /// so 751990192217 is the liveid
         /// </summary>
         private string LiveId = string.Empty;
+
+        private string? UserUniqueId { get; set; }
+
 
         /// <summary>
         /// websocket client
@@ -631,6 +636,15 @@ namespace BarrageGrab.GrabServices
                     RestResponse response = client.Execute(request);
                     if (response.StatusCode == HttpStatusCode.OK)
                     {
+                        //提取UserUniqueId
+                        string id = string.Empty;
+                        var reg_id = new Regex(@"user_unique_id\\"":\\""(?<userUniqueId>\d+)\\""", RegexOptions.IgnoreCase);
+                        Match _match_id = reg_id.Match(response.Content ?? "");
+                        if (_match_id.Success)
+                        {
+                            this.UserUniqueId = _match_id.Groups[1].Value;
+                        }
+
                         //正则表达式，提取roomid
                         var reg = new Regex(@"roomId\\"":\\""(?<roomId>\d+)\\""", RegexOptions.IgnoreCase);
                         Match _match = reg.Match(response.Content ?? "");
@@ -653,47 +667,55 @@ namespace BarrageGrab.GrabServices
 
         #region private string? GetWss()
         /// <summary>
-        /// GetWss
+        /// GetWss 通过部署的签名api获取签名后的wss地址
+        /// 如需本地部署签名服务，请联系博主
         /// </summary>
         /// <returns></returns>
-        private string GetWss()
+        private string? GetWss()
         {
-            StringBuilder wss = new StringBuilder();
-            wss.Append($"wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/");
-            wss.Append($"?app_name=douyin_web");
-            wss.Append($"&version_code=180800");
-            wss.Append($"&webcast_sdk_version=1.3.0");
-            wss.Append($"&update_version_code=1.3.0");
-            wss.Append($"&compress=gzip");
-            wss.Append($"&internal_ext=internal_src:dim|wss_push_room_id:{RoomId}|wss_push_did:{RoomId}|dim_log_id:202302171547011A160A7BAA76660E13ED|fetch_time:1676620021641|seq:1|wss_info:0-1676620021641-0-0|wrds_kvs:WebcastRoomStatsMessage-1676620020691146024_WebcastRoomRankMessage-1676619972726895075_AudienceGiftSyncData-1676619980834317696_HighlightContainerSyncData-2");
-            wss.Append($"&cursor=t-1676620021641_r-1_d-1_u-1_h-1");
-            wss.Append($"&host=https://live.douyin.com");
-            wss.Append($"&aid=6383");
-            wss.Append($"&live_id=1");
-            wss.Append($"&did_rule=3");
-            wss.Append($"&debug=false");
-            wss.Append($"&endpoint=live_pc");
-            wss.Append($"&support_wrds=1");
-            wss.Append($"&im_path=/webcast/im/fetch/");
-            wss.Append($"&user_unique_id={RoomId}");
-            wss.Append($"&device_platform=web");
-            wss.Append($"&cookie_enabled=true");
-            wss.Append($"&screen_width=1440");
-            wss.Append($"&screen_height=900");
-            wss.Append($"&browser_language=zh");
-            wss.Append($"&browser_platform=MacIntel");
-            wss.Append($"&browser_name=Mozilla");
-            wss.Append($"&browser_version=5.0%20(Macintosh;%20Intel%20Mac%20OS%20X%2010_15_7)%20AppleWebKit/537.36%20(KHTML,%20like%20Gecko)%20Chrome/110.0.0.0%20Safari/537.36");
-            wss.Append($"&browser_online=true");
-            wss.Append($"&tz_name=Asia/Shanghai");
-            wss.Append($"&identity=audience");
-            wss.Append($"&room_id={RoomId}");
-            wss.Append($"&heartbeatDuration=0");
+            using (RestClient client = new RestClient(GlobalConfigs.SignApi_Domain))
+            {
+                RestRequest request = new RestRequest($"{GlobalConfigs.SignApi_Url}", Method.Post);
+                request.AddHeader("Accept", "*/*");
+                request.AddHeader("Accept-Encoding", "gzip, deflate, br, zstd");
+                request.AddHeader("Accept-Language", "zh-CN,zh;q=0.9");
+                request.AddHeader("Connection", "keep-alive");
+                request.AddHeader("Content-Type", "application/json;charset=UTF-8");
 
-            //signature=00000000 wss并没有进行签名，稳定性肯定没签名过的稳定。如需签名及算法，请咨询群主
-            wss.Append($"&signature=00000000");
+                string body = JsonConvert.SerializeObject(new SignWssRequest()
+                {
+                    //临时apikey，如需申请独立apikey，请联系博主
+                    ApiKey = GlobalConfigs.SignApi_Key,
 
-            return wss.ToString();
+                    //根据实际情况填写
+                    BrowserName = "Mozilla",
+                    //根据实际情况填写
+                    BrowserVersion = UserAgent,
+
+                    RoomId = RoomId,
+                    UserUniqueId = UserUniqueId
+                });
+
+                request.AddHeader("Content-Length", Encoding.UTF8.GetByteCount(body));
+                request.AddBody(body);
+
+
+                RestResponse response = client.Execute(request);
+                if (response != null)
+                {
+                    JsonNode? json = JsonNode.Parse(response.Content ?? "");
+
+                    if (json == null) return null;
+
+                    if (json["Code"] == null || json["Code"]!.GetValue<int>() != 0) return null;
+
+                    if (json["Data"] == null) return null;
+
+                    return json["Data"]!["WssUrl"]!.GetValue<string>();
+                }
+            }
+
+            return null;
         }
 
         public void Dispose()

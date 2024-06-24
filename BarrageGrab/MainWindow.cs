@@ -23,6 +23,8 @@ namespace BarrageGrab
 
         private void MainWindow_Load(object sender, EventArgs e)
         {
+            this.Text = $"抖音快手Tiktok视频号WSS弹幕助手({GlobalConfigs.Version}) by 吴所畏惧 VX：xhhdqq";
+
             this.lblLocalWebSocket_Location.Text = GlobalConfigs.LocalWebSocketServer_Location;
 
             #region Platform
