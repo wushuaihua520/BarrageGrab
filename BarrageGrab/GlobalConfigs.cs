@@ -23,7 +23,7 @@ namespace BarrageGrab
         internal static string LiveUrl_Douyin { get; } = "https://live.douyin.com";
 
 
-        internal static string Version { get; } = "v1.9.0";
+        internal static string Version { get; } = "v1.9.1";
 
 
 
