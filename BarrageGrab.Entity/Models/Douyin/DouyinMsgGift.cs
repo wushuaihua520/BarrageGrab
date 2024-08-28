@@ -29,7 +29,15 @@ namespace BarrageGrab.Entity.Models.Douyin
         /// <summary>
         /// 本次(增量)礼物数量
         /// </summary>
-        public long GiftCount { get; set; }
+        //public long GiftCount { get; set; }
+
+        public long ComboCount { get; set; }
+
+        public long GroupCount { get; set; }
+
+        public long TotalCount { get; set; }
+
+        public int RepeatEnd { get; set; }
 
         /// <summary>
         /// 礼物数量(连续的)

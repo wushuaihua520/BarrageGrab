@@ -21,6 +21,7 @@ using System.Collections.Concurrent;
 using BarrageGrab.Framework.Helper;
 using BarrageGrab.Entity.Requests;
 using System.Text.Json.Nodes;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskBand;
 
 namespace BarrageGrab.GrabServices
 {
@@ -401,7 +402,11 @@ namespace BarrageGrab.GrabServices
                                                     MsgId = (long)giftMessage.Common.MsgId,
                                                     GiftId = (long)giftMessage.GiftId,
                                                     GiftName = giftMessage.Gift.Name,
-                                                    GiftCount = (long)giftMessage.RepeatCount,
+                                                    TotalCount = (long)giftMessage.TotalCount,
+                                                    RepeatCount = (long)giftMessage.RepeatCount,
+                                                    RepeatEnd = (int)giftMessage.RepeatEnd,
+                                                    ComboCount = (long)giftMessage.ComboCount,
+                                                    GroupCount = (long)giftMessage.GroupCount,
                                                     DiamondCount = (int)giftMessage.Gift.DiamondCount,
                                                     Content = $"{giftMessage.User.NickName} 送出 {giftMessage.Gift.Name}{(giftMessage.Gift.Combo ? "(可连击)" : "")} x {giftMessage.RepeatCount}个", //，增量{count}个
                                                     RoomId = (long)giftMessage.Common.RoomId,
