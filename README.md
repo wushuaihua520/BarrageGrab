@@ -4,6 +4,12 @@
 
 抖音/快手/视频号/Tiktok/bilibibli/斗鱼/拼多多/京东/Acfun/虎牙/YY/战旗/花椒等直播间弹幕，wss直连，非系统代理方式，无需多开浏览器窗口，且获取到弹幕数据后自定义转发。
 
+## 🔥全平台弹幕助手
+
+全平台弹幕助手产品已上线，如需了解详情，请移步至：[https://gitee.com/DonkeySmall/aiobs-barrage-idea-publish](https://gitee.com/DonkeySmall/aiobs-barrage-idea-publish)
+
+![1728901514663](image/README/1728901514663.png)
+
 ## 测试记录
 
 | 测试时间           | 抖音 | 快手 | 视频号 | Tiktok | 斗鱼 | 拼多多 | 京东 |
