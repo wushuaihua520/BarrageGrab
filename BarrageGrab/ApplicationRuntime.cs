@@ -12,6 +12,8 @@ namespace BarrageGrab
 {
     internal static class ApplicationRuntime
     {
+        public static MainWindow? MainWindow { get; set; }
+
         /// <summary>
         /// 主窗体实例
         /// </summary>

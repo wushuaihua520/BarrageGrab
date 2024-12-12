@@ -18,6 +18,8 @@ namespace BarrageGrab
 
         public MainWindow()
         {
+            ApplicationRuntime.MainWindow = this;
+
             InitializeComponent();
         }
 

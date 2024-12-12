@@ -531,7 +531,10 @@ namespace BarrageGrab.GrabServices
                 {
                     OnError?.Invoke(clientWebSocket, EventArgs.Empty);
 
+                    ApplicationRuntime.MainWindow?.PrintConsole($"[异常]{ex.Message}");
+
                     // do something
+                    throw new Exception(ex.Message);
                 }
             });
         }
@@ -712,7 +715,12 @@ namespace BarrageGrab.GrabServices
 
                     if (json == null) return null;
 
-                    if (json["Code"] == null || json["Code"]!.GetValue<int>() != 0) return null;
+                    if (json["Code"] == null) return null;
+
+                    if (json["Code"]!.GetValue<int>() != 0)
+                    {
+                        throw new Exception(json["Msg"]!.GetValue<string>());
+                    }
 
                     if (json["Data"] == null) return null;
 

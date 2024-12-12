@@ -264,7 +264,7 @@
             txtConsole.Margin = new Padding(2);
             txtConsole.Name = "txtConsole";
             txtConsole.ReadOnly = true;
-            txtConsole.Size = new Size(597, 321);
+            txtConsole.Size = new Size(539, 321);
             txtConsole.TabIndex = 4;
             txtConsole.TabStop = false;
             txtConsole.Text = "";
