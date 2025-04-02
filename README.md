@@ -22,7 +22,7 @@
 
 全平台弹幕助手产品已上线，如需了解详情，请移步至：[https://gitee.com/DonkeySmall/aiobs-barrage-idea-publish](https://gitee.com/DonkeySmall/aiobs-barrage-idea-publish)
 
-![1728901514663](image/README/1728901514663.png)
+![1743578415014](image/README/1743578415014.png)
 
 ## 支持平台
 
@@ -46,7 +46,6 @@
 ## 接下来支持平台
 
 * [ ] 淘宝（Coding）
-* [ ] bilibili（Coding）
 * [ ] Acfun（Coding）
 * [ ] 虎牙（Coding）
 
