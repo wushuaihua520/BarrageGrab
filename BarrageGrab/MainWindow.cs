@@ -1,104 +1,216 @@
 using BarrageGrab.Entity.Enums;
-using BarrageGrab.Framework;
-using Google.Protobuf.WellKnownTypes;
 
 namespace BarrageGrab
 {
     public partial class MainWindow : Form
     {
-        #region 属性&字段
-
-        /// <summary>
-        /// 打印的行数
-        /// </summary>
-        static int printCount = 0;
-
-        #endregion
-
+        private const int MaxConsoleLines = 10000;
+        private int _consoleLineCount;
+        private bool _isGrabbing;
 
         public MainWindow()
         {
-            ApplicationRuntime.MainWindow = this;
-
             InitializeComponent();
+            ApplicationRuntime.MainWindow = this;
         }
 
         private void MainWindow_Load(object sender, EventArgs e)
         {
-            this.Text = $"抖音快手Tiktok视频号WSS弹幕助手({GlobalConfigs.Version}) by 吴所畏惧 VX：xhhdqq";
+            Text = $"抖音快手Tiktok视频号WSS弹幕助手({GlobalConfigs.Version}) by 吴所畏惧 VX：xhhdqq";
+            lblLocalWebSocket_Location.Text = GlobalConfigs.LocalWebSocketServer_Location;
+            UpdateWebSocketStatus(running: true);
 
-            this.lblLocalWebSocket_Location.Text = GlobalConfigs.LocalWebSocketServer_Location;
+            txtLiveUrl.KeyDown += TxtLiveUrl_KeyDown;
+            WireGrabServiceEvents();
 
-            #region Platform
-            var platformList = new List<KeyValuePair<string, int>>();
-            platformList.Add(new KeyValuePair<string, int>("抖音", 1));
+            ApplicationRuntime.LivePlatform = GetSelectedPlatform();
+            PrintConsole($"BarrageGrab {GlobalConfigs.Version} 已启动");
+            PrintConsole($"本地 WebSocket 监听地址：{GlobalConfigs.LocalWebSocketServer_Location}");
+            PrintConsole("请输入直播间地址，点击「开始」或按 Enter 开始抓取");
+        }
 
-            #endregion
-
-
+        private void MainWindow_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (_isGrabbing)
+            {
+                StopGrabbing();
+            }
         }
 
         public void PrintConsole(string message)
         {
-            this.Invoke(new Action(() =>
+            if (IsDisposed)
             {
-                this.txtConsole.AppendText(message + "\r\n");
-                this.txtConsole.ScrollToCaret();
+                return;
+            }
 
-                if (++printCount > 10000)
-                {
-                    printCount = 0;
-                    this.txtConsole.Clear();
-                }
-            }));
+            if (InvokeRequired)
+            {
+                BeginInvoke(PrintConsole, message);
+                return;
+            }
 
+            var timestamp = DateTime.Now.ToString("HH:mm:ss");
+            txtConsole.AppendText($"[{timestamp}] {message}{Environment.NewLine}");
+            txtConsole.ScrollToCaret();
+
+            if (++_consoleLineCount > MaxConsoleLines)
+            {
+                _consoleLineCount = 0;
+                txtConsole.Clear();
+            }
         }
 
-        private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)
+        private void WireGrabServiceEvents()
         {
-            Application.Exit();
+            if (ApplicationRuntime.BarrageGrabService == null)
+            {
+                return;
+            }
+
+            ApplicationRuntime.BarrageGrabService.OnOpen += (_, _) =>
+            {
+                PrintConsole("[系统] 直播间连接成功");
+            };
+
+            ApplicationRuntime.BarrageGrabService.OnClose += (_, _) =>
+            {
+                PrintConsole("[系统] 直播间连接已断开");
+                if (_isGrabbing)
+                {
+                    BeginInvoke(ResetGrabUi);
+                }
+            };
+
+            ApplicationRuntime.BarrageGrabService.OnError += (_, _) =>
+            {
+                if (_isGrabbing)
+                {
+                    BeginInvoke(ResetGrabUi);
+                }
+            };
+        }
+
+        private void TxtLiveUrl_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                btnGrab.PerformClick();
+            }
         }
 
         private void btnReBoot_LocalWebSocket_Click(object sender, EventArgs e)
         {
-            ApplicationRuntime.LocalWebSocketServer?.ReStart();
+            try
+            {
+                ApplicationRuntime.LocalWebSocketServer?.ReStart();
+                UpdateWebSocketStatus(running: true);
+                PrintConsole("[系统] 本地 WebSocket 服务已重启");
+            }
+            catch (Exception ex)
+            {
+                UpdateWebSocketStatus(running: false);
+                PrintConsole($"[系统] WebSocket 重启失败：{ex.Message}");
+            }
         }
 
         private void btnGrab_Click(object sender, EventArgs e)
         {
-            object? tag = this.btnGrab.Tag;
-
-            if (tag == null || "start".Equals(tag.ToString()?.ToLower()))
+            if (_isGrabbing)
             {
-                string liveUrl = this.txtLiveUrl.Text.Trim();
-                if (string.IsNullOrEmpty(liveUrl))
-                {
-                    MessageBox.Show("LiveId不能为空!", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-
-                ApplicationRuntime.BarrageGrabService?.Start(liveUrl);
-
-
-                this.txtLiveUrl.Enabled = false;
-                this.btnGrab.Text = "停止";
-                this.btnGrab.Tag = "Stop";
-            }
-            else
-            {
-                ApplicationRuntime.BarrageGrabService?.Stop();
-
-                this.txtLiveUrl.Enabled = true;
-                this.btnGrab.Text = "开始";
-                this.btnGrab.Tag = "Start";
+                StopGrabbing();
+                return;
             }
 
+            StartGrabbing();
         }
 
+        private void StartGrabbing()
+        {
+            var liveUrl = txtLiveUrl.Text.Trim();
+            if (string.IsNullOrEmpty(liveUrl))
+            {
+                MessageBox.Show("直播间地址不能为空。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                txtLiveUrl.Focus();
+                return;
+            }
+
+            var platform = GetSelectedPlatform();
+            ApplicationRuntime.LivePlatform = platform;
+            if (platform != PlatformTypeEnum.Douyin)
+            {
+                MessageBox.Show("当前开源版仅支持抖音平台，其他平台请使用技术支持版。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                ApplicationRuntime.BarrageGrabService?.Start(liveUrl);
+                _isGrabbing = true;
+                txtLiveUrl.Enabled = false;
+                btnGrab.Text = "停止";
+                btnGrab.Tag = "Stop";
+                PrintConsole($"[系统] 开始抓取：{liveUrl}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"启动抓取失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ResetGrabUi();
+            }
+        }
+
+        private void StopGrabbing()
+        {
+            ApplicationRuntime.BarrageGrabService?.Stop();
+            ResetGrabUi();
+            PrintConsole("[系统] 已停止抓取");
+        }
+
+        private void ResetGrabUi()
+        {
+            _isGrabbing = false;
+            txtLiveUrl.Enabled = true;
+            btnGrab.Text = "开始";
+            btnGrab.Tag = "Start";
+        }
+
+        private PlatformTypeEnum GetSelectedPlatform()
+        {
+            if (radio_tiktok.Checked)
+            {
+                return PlatformTypeEnum.Tiktok;
+            }
+
+            if (radio_kuaishou.Checked)
+            {
+                return PlatformTypeEnum.Kuaishou;
+            }
+
+            if (radio_bilibili.Checked)
+            {
+                return PlatformTypeEnum.Bilibili;
+            }
+
+            return PlatformTypeEnum.Douyin;
+        }
+
+        private void UpdateWebSocketStatus(bool running)
+        {
+            lblLocalWebSocket_Status.Text = running ? "监听中" : "未启动";
+            lblLocalWebSocket_Status.ForeColor = running ? Color.Green : Color.Red;
+        }
 
         private void tsbtnAbout_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("本程序只用作学习交流，请勿用作非法用途。如有违背，责任自行承担。\r\nThis program is only for learning and communication purposes, please do not use it for illegal purposes. If there is any violation, the responsibility shall be borne by oneself.", "警告/Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show(
+                "本程序只用作学习交流，请勿用作非法用途。如有违背，责任自行承担。\r\n" +
+                "This program is only for learning and communication purposes, please do not use it for illegal purposes. " +
+                "If there is any violation, the responsibility shall be borne by oneself.",
+                "警告 / Warning",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
         }
     }
 }

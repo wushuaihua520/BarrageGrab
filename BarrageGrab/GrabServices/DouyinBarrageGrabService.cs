@@ -1,27 +1,17 @@
 ﻿using BarrageGrab.Entity.Enums;
+using BarrageGrab.Entity.Models;
 using BarrageGrab.Entity.Models.Douyin;
-using BarrageGrab.Framework;
 using BarrageGrab.Entity.Protobuf.Douyin;
+using BarrageGrab.Entity.Requests;
+using BarrageGrab.Framework.Helper;
 using Google.Protobuf;
+using Newtonsoft.Json;
 using RestSharp;
-using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using BarrageGrab.Framework.Utils;
-using BarrageGrab.Entity.Models;
-using Newtonsoft.Json;
-using System.Collections.Concurrent;
-using BarrageGrab.Framework.Helper;
-using BarrageGrab.Entity.Requests;
 using System.Text.Json.Nodes;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskBand;
+using System.Text.RegularExpressions;
 
 namespace BarrageGrab.GrabServices
 {
@@ -30,724 +20,621 @@ namespace BarrageGrab.GrabServices
     /// </summary>
     internal class DouyinBarrageGrabService : IBarrageGrabService, IDisposable
     {
-        #region Attributes & Fields
+        private const int ReceiveBufferSize = 64 * 1024;
+        private static readonly byte[] HeartbeatPayload = [0x3a, 0x02, 0x68, 0x62];
 
-        /// <summary>
-        /// User-Agent
-        /// </summary>
-        private string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        private readonly string userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-
-        /// <summary>
-        /// liveid
-        /// if live url is https://live.douyin.com/751990192217
-        /// so 751990192217 is the liveid
-        /// </summary>
-        private string LiveId = string.Empty;
-
-        private string? UserUniqueId { get; set; }
-
-
-        /// <summary>
-        /// websocket client
-        /// </summary>
+        private string liveId = string.Empty;
+        private string? userUniqueId;
         private ClientWebSocket? clientWebSocket;
+        private CancellationTokenSource? connectionCts;
+        private System.Timers.Timer? heartbeatTimer;
+        private bool disposed;
 
+        private string? _ttwid;
+        private string? _roomid;
+        private string? _wss;
 
-
-        #region Ttwid
-        private string? _ttwid = string.Empty;
-        private string? Ttwid
-        {
-            get
-            {
-                if (String.IsNullOrWhiteSpace(_ttwid))
-                {
-                    _ttwid = GetTtwid();
-                }
-
-                return _ttwid;
-            }
-            set
-            {
-                this._ttwid = value;
-            }
-        }
-        #endregion
-
-
-        #region RoomId
-        private string? _roomid = string.Empty;
-        private string? RoomId
-        {
-            get
-            {
-                if (String.IsNullOrWhiteSpace(_roomid))
-                {
-                    _roomid = GetRoomId();
-                }
-
-                return _roomid;
-            }
-            set
-            {
-                this._roomid = value;
-            }
-        }
-        #endregion
-
-
-        #region Wss
-        private string _wss = string.Empty;
-        private string Wss
-        {
-            get
-            {
-                if (String.IsNullOrWhiteSpace(_wss))
-                {
-                    _wss = GetWss();
-                }
-
-                return _wss;
-            }
-            set
-            {
-                this._wss = value;
-            }
-        }
-        #endregion
-
-
-
-        /// <summary>
-        /// on open
-        /// </summary>
         public event EventHandler? OnOpen;
-
-        /// <summary>
-        /// on message
-        /// </summary>
         public event EventHandler? OnMessage;
-
-        /// <summary>
-        /// on error
-        /// </summary>
         public event EventHandler? OnError;
-
-        /// <summary>
-        /// on close
-        /// </summary>
         public event EventHandler? OnClose;
-
-
-        #endregion
-
-
-
-
-
-
-
-
-
 
         public void Start(string liveId)
         {
-            LiveId = liveId;
+            Stop();
 
-            this.ConnectWss();
+            this.liveId = ExtractLiveId(liveId);
+            ResetConnectionState();
+            connectionCts = new CancellationTokenSource();
+            ConnectWss();
         }
 
         public void Stop()
         {
+            connectionCts?.Cancel();
+            connectionCts?.Dispose();
+            connectionCts = null;
+
+            heartbeatTimer?.Stop();
+            heartbeatTimer?.Dispose();
+            heartbeatTimer = null;
+
             try
             {
-                clientWebSocket?.Abort();
-                clientWebSocket?.Dispose();
-                clientWebSocket = null;
+                if (clientWebSocket != null)
+                {
+                    if (clientWebSocket.State == WebSocketState.Open)
+                    {
+                        clientWebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Stopped", CancellationToken.None)
+                            .GetAwaiter().GetResult();
+                    }
+
+                    clientWebSocket.Dispose();
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                // do something
+                // ignore shutdown errors
+            }
+            finally
+            {
+                clientWebSocket = null;
             }
         }
 
         public void ReStart()
         {
-            this.Stop();
-
-            this.Start(LiveId);
+            Start(liveId);
         }
 
+        private void ResetConnectionState()
+        {
+            _ttwid = null;
+            _roomid = null;
+            _wss = null;
+            userUniqueId = null;
+        }
 
+        private static string ExtractLiveId(string input)
+        {
+            input = input.Trim();
+            if (Uri.TryCreate(input, UriKind.Absolute, out var uri))
+            {
+                var segment = uri.AbsolutePath.Trim('/');
+                if (!string.IsNullOrEmpty(segment))
+                {
+                    return segment.Split('/').Last();
+                }
+            }
+
+            return input;
+        }
 
         private void ConnectWss()
         {
             clientWebSocket = new ClientWebSocket();
             clientWebSocket.Options.SetRequestHeader("cookie", $"ttwid={Ttwid}");
-            clientWebSocket.Options.SetRequestHeader("user-agent", UserAgent);
+            clientWebSocket.Options.SetRequestHeader("user-agent", userAgent);
 
+            var token = connectionCts?.Token ?? CancellationToken.None;
 
-            Task.Run(async () =>
+            _ = Task.Run(async () =>
             {
                 try
                 {
-                    //connect
-                    await clientWebSocket.ConnectAsync(new Uri(Wss), CancellationToken.None);
-
-                    if (clientWebSocket.State != WebSocketState.Open && clientWebSocket.State != WebSocketState.Connecting)
+                    var wssUrl = Wss;
+                    if (string.IsNullOrWhiteSpace(wssUrl))
                     {
-                        throw new Exception("连接服务器失败");
+                        throw new InvalidOperationException("获取WSS地址失败，请检查直播间ID或签名服务是否可用");
+                    }
+
+                    await clientWebSocket.ConnectAsync(new Uri(wssUrl), token).ConfigureAwait(false);
+
+                    if (clientWebSocket.State != WebSocketState.Open)
+                    {
+                        throw new InvalidOperationException("连接服务器失败");
                     }
 
                     OnOpen?.Invoke(clientWebSocket, EventArgs.Empty);
+                    StartHeartbeat(token);
 
-
-                    #region 发送hb心跳
-                    try
+                    var buffer = new byte[ReceiveBufferSize];
+                    while (!token.IsCancellationRequested && clientWebSocket.State == WebSocketState.Open)
                     {
-                        byte[] heartbeat = new byte[] { 0x3a, 0x02, 0x68, 0x62 };
-                        await clientWebSocket.SendAsync(new ArraySegment<byte>(heartbeat), WebSocketMessageType.Binary, true, CancellationToken.None);
-
-                        var heartbeatTimer = new System.Timers.Timer(10000);
-                        heartbeatTimer.Enabled = true;
-                        heartbeatTimer.Start();
-                        heartbeatTimer.Elapsed += (sender, e) =>
+                        var payload = await ReceiveFullMessageAsync(clientWebSocket, buffer, token).ConfigureAwait(false);
+                        if (payload.Length == 0)
                         {
-                            clientWebSocket?.SendAsync(new ArraySegment<byte>(heartbeat), WebSocketMessageType.Binary, true, CancellationToken.None);
-                        };
-                    }
-                    catch (Exception ex)
-                    {
-                        //do something
-                    }
-                    #endregion
-
-
-                    //缓冲写大一些，就不用while循环分多次取
-                    byte[] buffer = new byte[1024 * 10000];
-
-                    //监听Socket信息，接收连接的套接字发来的数据
-                    WebSocketReceiveResult result = await clientWebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-
-                    //如果没有关闭，就一直接收
-                    while (!result.CloseStatus.HasValue)
-                    {
-                        #region 处理消息
-                        //将接收到的数据写到缓冲里
-                        var package = PushFrame.Parser.ParseFrom(new MemoryStream(buffer, 0, result.Count));
-                        var response = Response.Parser.ParseFrom(DecompressHelper.Decompress(package.Payload.ToArray()));
-
-                        #region if NeedAck
-                        if (response.NeedAck)
-                        {
-                            PushFrame ack = new PushFrame()
-                            {
-                                LogId = package.LogId,
-                                PayloadType = "ack",
-                                Payload = ByteString.CopyFromUtf8(response.InternalExt)
-                            };
-
-                            await clientWebSocket.SendAsync(new ArraySegment<byte>(ack.ToByteString().ToArray()), WebSocketMessageType.Binary, true, CancellationToken.None);
+                            break;
                         }
-                        #endregion
 
-                        #region 处理消息数据（这里只是写个例子）
-                        if (response.MessagesList != null && response.MessagesList.Count > 0)
-                        {
-                            foreach (var message in response.MessagesList)
-                            {
-                                switch (message.Method)
-                                {
-                                    #region WebcastMemberMessage 进入
-                                    case "WebcastMemberMessage":
-                                        {
-                                            MemberMessage memberMsg = MemberMessage.Parser.ParseFrom(message.Payload);
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.Member,
-                                                Data = new DouyinMsgMember()
-                                                {
-                                                    MsgId = (long)memberMsg.Common.MsgId,
-                                                    Content = $"{memberMsg.User.NickName} 来了",
-                                                    RoomId = (long)memberMsg.Common.RoomId,
-                                                    MemberCount = (long)memberMsg.MemberCount,
-                                                    User = GetUser(memberMsg.User)
-                                                }
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[进入]{memberMsg.User.NickName} 来了");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastSocialMessage 关注 & 分享
-                                    case "WebcastSocialMessage":
-                                        {
-                                            SocialMessage socialMessage = SocialMessage.Parser.ParseFrom(message.Payload);
-
-                                            #region 分享
-                                            if (socialMessage.Action == 3)
-                                            {
-                                                OpenBarrageMessage obm = new OpenBarrageMessage()
-                                                {
-                                                    Type = MessageTypeEnum.Share,
-                                                    Data = new DouyinMsgShare()
-                                                    {
-                                                        MsgId = (long)socialMessage.Common.MsgId,
-                                                        Content = $"{socialMessage.User.NickName} 分享了直播间到{socialMessage.ShareTarget}",
-                                                        RoomId = (long)socialMessage.Common.RoomId,
-                                                        //ShareType = socialMessage.ShareTarget,
-                                                        User = GetUser(socialMessage.User)
-                                                    }
-                                                };
-
-                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                                ApplicationRuntime.MainForm?.PrintConsole($"[分享]{socialMessage.User.NickName} 分享了直播间到{socialMessage.ShareTarget}");
-                                            }
-                                            #endregion
-
-                                            #region 关注
-                                            else
-                                            {
-                                                OpenBarrageMessage obm = new OpenBarrageMessage()
-                                                {
-                                                    Type = MessageTypeEnum.Social,
-                                                    Data = new DouyinMsgSocial()
-                                                    {
-                                                        MsgId = (long)socialMessage.Common.MsgId,
-                                                        Content = $"{socialMessage.User.NickName} 关注了主播",
-                                                        RoomId = (long)socialMessage.Common.RoomId,
-                                                        User = GetUser(socialMessage.User)
-                                                    }
-                                                };
-
-                                                ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                                ApplicationRuntime.MainForm?.PrintConsole($"[关注]{socialMessage.User.NickName} 关注了主播");
-                                            }
-                                            #endregion
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastChatMessage 弹幕
-                                    case "WebcastChatMessage":
-                                        {
-                                            ChatMessage chatMessage = ChatMessage.Parser.ParseFrom(message.Payload);
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.Chat,
-                                                Data = new DouyinMsgChat()
-                                                {
-                                                    MsgId = (long)chatMessage.Common.MsgId,
-                                                    Content = chatMessage.Content,
-                                                    RoomId = (long)chatMessage.Common.RoomId,
-                                                    User = GetUser(chatMessage.User)
-                                                }
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[弹幕]{chatMessage.User.NickName} 说 {chatMessage.Content}");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastLikeMessage 点赞
-                                    case "WebcastLikeMessage":
-                                        {
-                                            LikeMessage likeMessage = LikeMessage.Parser.ParseFrom(message.Payload);
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.Like,
-                                                Data = new DouyinMsgLike()
-                                                {
-                                                    MsgId = (long)likeMessage.Common.MsgId,
-                                                    Count = (long)likeMessage.Count,
-                                                    Total = (long)likeMessage.Total,
-                                                    Content = $"{likeMessage.User.NickName} 为主播点了{likeMessage.Count.ToString()}个赞，总点赞{likeMessage.Total.ToString()}",
-                                                    RoomId = (long)likeMessage.Common.RoomId,
-                                                    User = GetUser(likeMessage.User)
-                                                }
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[点赞]{likeMessage.User.NickName} 点了 {likeMessage.Count.ToString()} 个赞");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastGiftMessage 礼物
-                                    case "WebcastGiftMessage":
-                                        {
-                                            GiftMessage giftMessage = GiftMessage.Parser.ParseFrom(message.Payload);
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.Gift,
-                                                Data = new DouyinMsgGift()
-                                                {
-                                                    MsgId = (long)giftMessage.Common.MsgId,
-                                                    GiftId = (long)giftMessage.GiftId,
-                                                    GiftName = giftMessage.Gift.Name,
-                                                    TotalCount = (long)giftMessage.TotalCount,
-                                                    RepeatCount = (long)giftMessage.RepeatCount,
-                                                    RepeatEnd = (int)giftMessage.RepeatEnd,
-                                                    ComboCount = (long)giftMessage.ComboCount,
-                                                    GroupCount = (long)giftMessage.GroupCount,
-                                                    DiamondCount = (int)giftMessage.Gift.DiamondCount,
-                                                    Content = $"{giftMessage.User.NickName} 送出 {giftMessage.Gift.Name}{(giftMessage.Gift.Combo ? "(可连击)" : "")} x {giftMessage.RepeatCount}个", //，增量{count}个
-                                                    RoomId = (long)giftMessage.Common.RoomId,
-                                                    User = GetUser(giftMessage.User),
-                                                    ToUser = GetUser(giftMessage.ToUser)
-                                                }
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[礼物]{giftMessage.User.NickName} 送出 {giftMessage.RepeatCount.ToString()} 个 {giftMessage.Gift.Name}");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastRoomUserSeqMessage 统计
-                                    case "WebcastRoomUserSeqMessage":
-                                        {
-                                            RoomUserSeqMessage roomUserSeqMessage = RoomUserSeqMessage.Parser.ParseFrom(message.Payload);
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.RoomUserSeq,
-                                                Data = new DouyinMsgRoomUserSeq()
-                                                {
-                                                    MsgId = (long)roomUserSeqMessage.Common.MsgId,
-                                                    OnlineUserCount = roomUserSeqMessage.Total,
-                                                    TotalUserCount = roomUserSeqMessage.TotalUser,
-                                                    TotalUserCountStr = roomUserSeqMessage.TotalPvForAnchor,
-                                                    OnlineUserCountStr = roomUserSeqMessage.OnlineUserForAnchor,
-                                                    Content = $"当前直播间人数 {roomUserSeqMessage.OnlineUserForAnchor}，累计直播间人数 {roomUserSeqMessage.TotalPvForAnchor}",
-                                                    RoomId = (long)roomUserSeqMessage.Common.RoomId,
-                                                    User = null
-                                                }
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[人气统计]当前直播间人数 {roomUserSeqMessage.OnlineUserForAnchor}，累计直播间人数 {roomUserSeqMessage.TotalPvForAnchor}");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastControlMessage 直播间状态变更
-                                    case "WebcastControlMessage":
-                                        {
-                                            ControlMessage controlMessage = ControlMessage.Parser.ParseFrom(message.Payload);
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.Control,
-                                                Data = new DouyinMsgControl()
-                                                {
-                                                    MsgId = (long)controlMessage.Common.MsgId,
-                                                    Content = controlMessage.Status == 3 ? "直播已结束" : "",
-                                                    RoomId = (long)controlMessage.Common.RoomId,
-                                                    User = null
-                                                }
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[系统]当前直播已结束");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    #region WebcastFansclubMessage 粉丝团
-                                    case "WebcastFansclubMessage":
-                                        {
-                                            FansclubMessage fansclubMessage = FansclubMessage.Parser.ParseFrom(message.Payload);
-
-                                            DouyinMsgFansClub douyinMsgFansClub = new DouyinMsgFansClub()
-                                            {
-                                                MsgId = (long)fansclubMessage.CommonInfo.MsgId,
-                                                Type = fansclubMessage.Type,
-                                                Content = fansclubMessage.Content,
-                                                RoomId = (long)fansclubMessage.CommonInfo.RoomId,
-                                                User = GetUser(fansclubMessage.User)
-                                            };
-
-                                            if (douyinMsgFansClub.User != null && douyinMsgFansClub.User.FansClub != null)
-                                            {
-                                                douyinMsgFansClub.Level = douyinMsgFansClub.User.FansClub.Level;
-                                            }
-
-                                            OpenBarrageMessage obm = new OpenBarrageMessage()
-                                            {
-                                                Type = MessageTypeEnum.Fansclub,
-                                                Data = douyinMsgFansClub
-                                            };
-
-                                            ApplicationRuntime.LocalWebSocketServer?.Broadcast(JsonConvert.SerializeObject(obm));
-
-                                            ApplicationRuntime.MainForm?.PrintConsole($"[粉丝团]{fansclubMessage.User.NickName} 加入了主播粉丝团");
-
-                                            break;
-                                        }
-                                    #endregion
-
-                                    default:
-                                        break;
-                                }
-                            }
-                        }
-                        #endregion
-
-                        #endregion
-
-
-                        //keep receive
-                        if (clientWebSocket.State == WebSocketState.Open)
-                        {
-                            result = await clientWebSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                        }
+                        await ProcessPayloadAsync(payload).ConfigureAwait(false);
                     }
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected during Stop()
                 }
                 catch (Exception ex)
                 {
                     OnError?.Invoke(clientWebSocket, EventArgs.Empty);
-
                     ApplicationRuntime.MainWindow?.PrintConsole($"[异常]{ex.Message}");
-
-                    // do something
-                    throw new Exception(ex.Message);
                 }
-            });
+                finally
+                {
+                    OnClose?.Invoke(clientWebSocket, EventArgs.Empty);
+                }
+            }, token);
         }
 
-
-
-
-
-
-        #region 方法
-
-
-
-
-
-        #region GenerateMsToken
-        static Random random = new Random();
-        private string GenerateMsToken(int length = 107)
+        private void StartHeartbeat(CancellationToken token)
         {
-            string baseStr = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=_";
-
-            StringBuilder str = new StringBuilder();
-
-            int len = baseStr.Length;
-            for (int i = 0; i < length; i++)
+            heartbeatTimer?.Dispose();
+            heartbeatTimer = new System.Timers.Timer(10000)
             {
-                str.Append(baseStr[random.Next(0, len)]);
+                AutoReset = true,
+                Enabled = true
+            };
+
+            heartbeatTimer.Elapsed += async (_, _) =>
+            {
+                if (token.IsCancellationRequested || clientWebSocket?.State != WebSocketState.Open)
+                {
+                    return;
+                }
+
+                try
+                {
+                    await clientWebSocket.SendAsync(
+                        new ArraySegment<byte>(HeartbeatPayload),
+                        WebSocketMessageType.Binary,
+                        true,
+                        token).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // connection may already be closed
+                }
+            };
+
+            _ = clientWebSocket!.SendAsync(
+                new ArraySegment<byte>(HeartbeatPayload),
+                WebSocketMessageType.Binary,
+                true,
+                token);
+        }
+
+        private static async Task<byte[]> ReceiveFullMessageAsync(ClientWebSocket webSocket, byte[] buffer, CancellationToken token)
+        {
+            using var messageStream = new MemoryStream();
+            WebSocketReceiveResult result;
+
+            do
+            {
+                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), token).ConfigureAwait(false);
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    return Array.Empty<byte>();
+                }
+
+                messageStream.Write(buffer, 0, result.Count);
+            }
+            while (!result.EndOfMessage);
+
+            return messageStream.ToArray();
+        }
+
+        private async Task ProcessPayloadAsync(byte[] payload)
+        {
+            var package = PushFrame.Parser.ParseFrom(payload);
+            var response = Response.Parser.ParseFrom(DecompressHelper.Decompress(package.Payload.ToByteArray()));
+
+            if (response.NeedAck && clientWebSocket?.State == WebSocketState.Open)
+            {
+                var ack = new PushFrame
+                {
+                    LogId = package.LogId,
+                    PayloadType = "ack",
+                    Payload = ByteString.CopyFromUtf8(response.InternalExt)
+                };
+
+                await clientWebSocket.SendAsync(
+                    new ArraySegment<byte>(ack.ToByteString().ToByteArray()),
+                    WebSocketMessageType.Binary,
+                    true,
+                    connectionCts?.Token ?? CancellationToken.None).ConfigureAwait(false);
             }
 
-            return str.ToString();
-        }
-        #endregion
-
-
-        #region private string? GetTwid()
-        private string? GetTtwid()
-        {
-            try
+            if (response.MessagesList == null || response.MessagesList.Count == 0)
             {
-                int defailedCount = 0;
-                string? temp_ttwid = string.Empty;
+                return;
+            }
 
-                while (true)
-                {
-                    try
+            foreach (var message in response.MessagesList)
+            {
+                await HandleMessageAsync(message).ConfigureAwait(false);
+            }
+        }
+
+        private async Task HandleMessageAsync(BarrageGrab.Entity.Protobuf.Douyin.Message message)
+        {
+            switch (message.Method)
+            {
+                case "WebcastMemberMessage":
                     {
-                        using (RestClient client = new RestClient(GlobalConfigs.LiveUrl_Douyin))
-                        {
-                            RestRequest request = new RestRequest($"/{LiveId}", Method.Get);
-                            request.AddHeader("User-Agent", UserAgent);
-                            request.AddCookie("__ac_nonce", "0" + GenerateMsToken(20), "/", "live.douyin.com"); //__ac_nonce 可以是任意值
-
-                            RestResponse response = client.Execute(request);
-                            if (response.StatusCode == HttpStatusCode.OK)
+                        var memberMsg = MemberMessage.Parser.ParseFrom(message.Payload);
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
                             {
-                                if (response.Cookies != null && response.Cookies.Count > 0)
+                                Type = MessageTypeEnum.Member,
+                                Data = new DouyinMsgMember
                                 {
-                                    temp_ttwid = response.Cookies.Where(cookie => "ttwid".Equals(cookie.Name)).FirstOrDefault()?.Value;
+                                    MsgId = (long)memberMsg.Common.MsgId,
+                                    Content = $"{memberMsg.User.NickName} 来了",
+                                    RoomId = (long)memberMsg.Common.RoomId,
+                                    MemberCount = (long)memberMsg.MemberCount,
+                                    User = GetUser(memberMsg.User)
                                 }
-                            }
-                        }
+                            },
+                            $"[进入]{memberMsg.User.NickName} 来了").ConfigureAwait(false);
+                        break;
+                    }
 
-                        if (!string.IsNullOrWhiteSpace(temp_ttwid))
+                case "WebcastSocialMessage":
+                    {
+                        var socialMessage = SocialMessage.Parser.ParseFrom(message.Payload);
+                        if (socialMessage.Action == 3)
                         {
-                            break;
+                            await PublishMessageAsync(
+                                new OpenBarrageMessage
+                                {
+                                    Type = MessageTypeEnum.Share,
+                                    Data = new DouyinMsgShare
+                                    {
+                                        MsgId = (long)socialMessage.Common.MsgId,
+                                        Content = $"{socialMessage.User.NickName} 分享了直播间到{socialMessage.ShareTarget}",
+                                        RoomId = (long)socialMessage.Common.RoomId,
+                                        User = GetUser(socialMessage.User)
+                                    }
+                                },
+                                $"[分享]{socialMessage.User.NickName} 分享了直播间到{socialMessage.ShareTarget}").ConfigureAwait(false);
                         }
                         else
                         {
-                            throw new Exception("空值，再来一次");
+                            await PublishMessageAsync(
+                                new OpenBarrageMessage
+                                {
+                                    Type = MessageTypeEnum.Social,
+                                    Data = new DouyinMsgSocial
+                                    {
+                                        MsgId = (long)socialMessage.Common.MsgId,
+                                        Content = $"{socialMessage.User.NickName} 关注了主播",
+                                        RoomId = (long)socialMessage.Common.RoomId,
+                                        User = GetUser(socialMessage.User)
+                                    }
+                                },
+                                $"[关注]{socialMessage.User.NickName} 关注了主播").ConfigureAwait(false);
                         }
-                    }
-                    catch (Exception)
-                    {
-                        defailedCount++;
-                        temp_ttwid = null;
-                    }
 
-                    //实在带不动了，算了
-                    if (defailedCount > 5)
-                    {
                         break;
                     }
-                }
 
-                return temp_ttwid;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-        #endregion
-
-
-        #region private string? GetRoomId()
-        private string? GetRoomId()
-        {
-            try
-            {
-                using (RestClient client = new RestClient(GlobalConfigs.LiveUrl_Douyin))
-                {
-                    RestRequest request = new RestRequest($"/{LiveId}", Method.Get);
-
-                    request.AddHeader("User-Agent", UserAgent);
-                    request.AddHeader("cookie", $"ttwid={Ttwid}&msToken={GenerateMsToken()}; __ac_nonce=0{GenerateMsToken(20)}");
-
-                    RestResponse response = client.Execute(request);
-                    if (response.StatusCode == HttpStatusCode.OK)
+                case "WebcastChatMessage":
                     {
-                        //提取UserUniqueId
-                        string id = string.Empty;
-                        var reg_id = new Regex(@"user_unique_id\\"":\\""(?<userUniqueId>\d+)\\""", RegexOptions.IgnoreCase);
-                        Match _match_id = reg_id.Match(response.Content ?? "");
-                        if (_match_id.Success)
-                        {
-                            this.UserUniqueId = _match_id.Groups[1].Value;
-                        }
-
-                        //正则表达式，提取roomid
-                        var reg = new Regex(@"roomId\\"":\\""(?<roomId>\d+)\\""", RegexOptions.IgnoreCase);
-                        Match _match = reg.Match(response.Content ?? "");
-                        if (_match.Success)
-                        {
-                            return _match.Groups["roomId"].Value;
-                        }
-                    }
-                }
-
-                return null;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-        #endregion
-
-
-        #region private string? GetWss()
-        /// <summary>
-        /// GetWss 通过部署的签名api获取签名后的wss地址
-        /// 如需本地部署签名服务，请联系博主
-        /// </summary>
-        /// <returns></returns>
-        private string? GetWss()
-        {
-            using (RestClient client = new RestClient(GlobalConfigs.SignApi_Domain))
-            {
-                RestRequest request = new RestRequest($"{GlobalConfigs.SignApi_Url}", Method.Post);
-                request.AddHeader("Accept", "*/*");
-                request.AddHeader("Accept-Encoding", "gzip, deflate, br, zstd");
-                request.AddHeader("Accept-Language", "zh-CN,zh;q=0.9");
-                request.AddHeader("Connection", "keep-alive");
-                request.AddHeader("Content-Type", "application/json;charset=UTF-8");
-
-                string body = JsonConvert.SerializeObject(new SignWssRequest()
-                {
-                    //临时apikey，如需申请独立apikey，请联系博主
-                    ApiKey = GlobalConfigs.SignApi_Key,
-
-                    //根据实际情况填写
-                    BrowserName = "Mozilla",
-                    //根据实际情况填写
-                    BrowserVersion = UserAgent,
-
-                    RoomId = RoomId,
-                    UserUniqueId = UserUniqueId
-                });
-
-                request.AddHeader("Content-Length", Encoding.UTF8.GetByteCount(body));
-                request.AddBody(body);
-
-
-                RestResponse response = client.Execute(request);
-                if (response != null)
-                {
-                    JsonNode? json = JsonNode.Parse(response.Content ?? "");
-
-                    if (json == null) return null;
-
-                    if (json["Code"] == null) return null;
-
-                    if (json["Code"]!.GetValue<int>() != 0)
-                    {
-                        throw new Exception(json["Msg"]!.GetValue<string>());
+                        var chatMessage = ChatMessage.Parser.ParseFrom(message.Payload);
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
+                            {
+                                Type = MessageTypeEnum.Chat,
+                                Data = new DouyinMsgChat
+                                {
+                                    MsgId = (long)chatMessage.Common.MsgId,
+                                    Content = chatMessage.Content,
+                                    RoomId = (long)chatMessage.Common.RoomId,
+                                    User = GetUser(chatMessage.User)
+                                }
+                            },
+                            $"[弹幕]{chatMessage.User.NickName} 说 {chatMessage.Content}").ConfigureAwait(false);
+                        break;
                     }
 
-                    if (json["Data"] == null) return null;
+                case "WebcastLikeMessage":
+                    {
+                        var likeMessage = LikeMessage.Parser.ParseFrom(message.Payload);
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
+                            {
+                                Type = MessageTypeEnum.Like,
+                                Data = new DouyinMsgLike
+                                {
+                                    MsgId = (long)likeMessage.Common.MsgId,
+                                    Count = (long)likeMessage.Count,
+                                    Total = (long)likeMessage.Total,
+                                    Content = $"{likeMessage.User.NickName} 为主播点了{likeMessage.Count}个赞，总点赞{likeMessage.Total}",
+                                    RoomId = (long)likeMessage.Common.RoomId,
+                                    User = GetUser(likeMessage.User)
+                                }
+                            },
+                            $"[点赞]{likeMessage.User.NickName} 点了 {likeMessage.Count} 个赞").ConfigureAwait(false);
+                        break;
+                    }
 
-                    return json["Data"]!["WssUrl"]!.GetValue<string>();
+                case "WebcastGiftMessage":
+                    {
+                        var giftMessage = GiftMessage.Parser.ParseFrom(message.Payload);
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
+                            {
+                                Type = MessageTypeEnum.Gift,
+                                Data = new DouyinMsgGift
+                                {
+                                    MsgId = (long)giftMessage.Common.MsgId,
+                                    GiftId = (long)giftMessage.GiftId,
+                                    GiftName = giftMessage.Gift.Name,
+                                    TotalCount = (long)giftMessage.TotalCount,
+                                    RepeatCount = (long)giftMessage.RepeatCount,
+                                    RepeatEnd = (int)giftMessage.RepeatEnd,
+                                    ComboCount = (long)giftMessage.ComboCount,
+                                    GroupCount = (long)giftMessage.GroupCount,
+                                    DiamondCount = (int)giftMessage.Gift.DiamondCount,
+                                    Content = $"{giftMessage.User.NickName} 送出 {giftMessage.Gift.Name}{(giftMessage.Gift.Combo ? "(可连击)" : "")} x {giftMessage.RepeatCount}个",
+                                    RoomId = (long)giftMessage.Common.RoomId,
+                                    User = GetUser(giftMessage.User),
+                                    ToUser = GetUser(giftMessage.ToUser)
+                                }
+                            },
+                            $"[礼物]{giftMessage.User.NickName} 送出 {giftMessage.RepeatCount} 个 {giftMessage.Gift.Name}").ConfigureAwait(false);
+                        break;
+                    }
+
+                case "WebcastRoomUserSeqMessage":
+                    {
+                        var roomUserSeqMessage = RoomUserSeqMessage.Parser.ParseFrom(message.Payload);
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
+                            {
+                                Type = MessageTypeEnum.RoomUserSeq,
+                                Data = new DouyinMsgRoomUserSeq
+                                {
+                                    MsgId = (long)roomUserSeqMessage.Common.MsgId,
+                                    OnlineUserCount = roomUserSeqMessage.Total,
+                                    TotalUserCount = roomUserSeqMessage.TotalUser,
+                                    TotalUserCountStr = roomUserSeqMessage.TotalPvForAnchor,
+                                    OnlineUserCountStr = roomUserSeqMessage.OnlineUserForAnchor,
+                                    Content = $"当前直播间人数 {roomUserSeqMessage.OnlineUserForAnchor}，累计直播间人数 {roomUserSeqMessage.TotalPvForAnchor}",
+                                    RoomId = (long)roomUserSeqMessage.Common.RoomId,
+                                    User = null
+                                }
+                            },
+                            $"[人气统计]当前直播间人数 {roomUserSeqMessage.OnlineUserForAnchor}，累计直播间人数 {roomUserSeqMessage.TotalPvForAnchor}").ConfigureAwait(false);
+                        break;
+                    }
+
+                case "WebcastControlMessage":
+                    {
+                        var controlMessage = ControlMessage.Parser.ParseFrom(message.Payload);
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
+                            {
+                                Type = MessageTypeEnum.Control,
+                                Data = new DouyinMsgControl
+                                {
+                                    MsgId = (long)controlMessage.Common.MsgId,
+                                    Content = controlMessage.Status == 3 ? "直播已结束" : string.Empty,
+                                    RoomId = (long)controlMessage.Common.RoomId,
+                                    User = null
+                                }
+                            },
+                            "[系统]当前直播已结束").ConfigureAwait(false);
+                        break;
+                    }
+
+                case "WebcastFansclubMessage":
+                    {
+                        var fansclubMessage = FansclubMessage.Parser.ParseFrom(message.Payload);
+                        var fansClubMessage = new DouyinMsgFansClub
+                        {
+                            MsgId = (long)fansclubMessage.CommonInfo.MsgId,
+                            Type = fansclubMessage.Type,
+                            Content = fansclubMessage.Content,
+                            RoomId = (long)fansclubMessage.CommonInfo.RoomId,
+                            User = GetUser(fansclubMessage.User)
+                        };
+
+                        if (fansClubMessage.User?.FansClub != null)
+                        {
+                            fansClubMessage.Level = fansClubMessage.User.FansClub.Level;
+                        }
+
+                        await PublishMessageAsync(
+                            new OpenBarrageMessage
+                            {
+                                Type = MessageTypeEnum.Fansclub,
+                                Data = fansClubMessage
+                            },
+                            $"[粉丝团]{fansclubMessage.User.NickName} 加入了主播粉丝团").ConfigureAwait(false);
+                        break;
+                    }
+            }
+        }
+
+        private static async Task PublishMessageAsync(OpenBarrageMessage message, string consoleMessage)
+        {
+            var payload = JsonConvert.SerializeObject(message);
+            if (ApplicationRuntime.LocalWebSocketServer != null)
+            {
+                await ApplicationRuntime.LocalWebSocketServer.Broadcast(payload).ConfigureAwait(false);
+            }
+
+            ApplicationRuntime.MainWindow?.PrintConsole(consoleMessage);
+        }
+
+        private string GenerateMsToken(int length = 107)
+        {
+            const string baseStr = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=_";
+            var builder = new StringBuilder(length);
+            for (var i = 0; i < length; i++)
+            {
+                builder.Append(baseStr[Random.Shared.Next(baseStr.Length)]);
+            }
+
+            return builder.ToString();
+        }
+
+        private string? Ttwid
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(_ttwid))
+                {
+                    return _ttwid;
                 }
+
+                _ttwid = GetTtwid();
+                return _ttwid;
+            }
+        }
+
+        private string? RoomId
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(_roomid))
+                {
+                    return _roomid;
+                }
+
+                _roomid = GetRoomId();
+                return _roomid;
+            }
+        }
+
+        private string? Wss
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(_wss))
+                {
+                    return _wss;
+                }
+
+                _wss = GetWss();
+                return _wss;
+            }
+        }
+
+        private string? GetTtwid()
+        {
+            var failedCount = 0;
+            string? tempTtwid = null;
+
+            while (failedCount <= 5)
+            {
+                try
+                {
+                    using var client = new RestClient(GlobalConfigs.LiveUrl_Douyin);
+                    var request = new RestRequest($"/{liveId}", Method.Get);
+                    request.AddHeader("User-Agent", userAgent);
+                    request.AddCookie("__ac_nonce", "0" + GenerateMsToken(20), "/", "live.douyin.com");
+
+                    var response = client.Execute(request);
+                    if (response.StatusCode == HttpStatusCode.OK && response.Cookies?.Count > 0)
+                    {
+                        tempTtwid = response.Cookies.FirstOrDefault(cookie => cookie.Name == "ttwid")?.Value;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(tempTtwid))
+                    {
+                        return tempTtwid;
+                    }
+                }
+                catch
+                {
+                    // retry
+                }
+
+                failedCount++;
             }
 
             return null;
         }
 
-        public void Dispose()
+        private string? GetRoomId()
         {
+            try
+            {
+                using var client = new RestClient(GlobalConfigs.LiveUrl_Douyin);
+                var request = new RestRequest($"/{liveId}", Method.Get);
+                request.AddHeader("User-Agent", userAgent);
+                request.AddHeader("cookie", $"ttwid={Ttwid}&msToken={GenerateMsToken()}; __ac_nonce=0{GenerateMsToken(20)}");
 
+                var response = client.Execute(request);
+                if (response.StatusCode != HttpStatusCode.OK)
+                {
+                    return null;
+                }
+
+                var content = response.Content ?? string.Empty;
+                var userUniqueIdMatch = Regex.Match(content, @"user_unique_id\\"":\\""(?<userUniqueId>\d+)\\""", RegexOptions.IgnoreCase);
+                if (userUniqueIdMatch.Success)
+                {
+                    userUniqueId = userUniqueIdMatch.Groups["userUniqueId"].Value;
+                }
+
+                var roomIdMatch = Regex.Match(content, @"roomId\\"":\\""(?<roomId>\d+)\\""", RegexOptions.IgnoreCase);
+                if (roomIdMatch.Success)
+                {
+                    return roomIdMatch.Groups["roomId"].Value;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
+            return null;
         }
 
-        #endregion
+        private string? GetWss()
+        {
+            using var client = new RestClient(GlobalConfigs.SignApi_Domain);
+            var request = new RestRequest(GlobalConfigs.SignApi_Url, Method.Post);
+            request.AddHeader("Accept", "*/*");
+            request.AddHeader("Content-Type", "application/json;charset=UTF-8");
 
+            request.AddJsonBody(new SignWssRequest
+            {
+                ApiKey = GlobalConfigs.SignApi_Key,
+                BrowserName = "Mozilla",
+                BrowserVersion = userAgent,
+                RoomId = RoomId,
+                UserUniqueId = userUniqueId
+            });
+            var response = client.Execute(request);
+            if (response.Content == null)
+            {
+                return null;
+            }
 
-        #region private DouyinUser? GetUser(User data)
-        private DouyinUser? GetUser(User data)
+            var json = JsonNode.Parse(response.Content);
+            if (json?["Code"]?.GetValue<int>() != 0)
+            {
+                var errorMessage = json?["Msg"]?.GetValue<string>() ?? "签名服务返回异常";
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            return json["Data"]?["WssUrl"]?.GetValue<string>();
+        }
+
+        private static DouyinUser? GetUser(User? data)
         {
             if (data == null)
             {
                 return null;
             }
 
-            DouyinUser user = new DouyinUser()
+            var user = new DouyinUser
             {
                 DisplayId = data.DisplayId,
                 ShortId = (long)data.ShortId,
@@ -756,16 +643,16 @@ namespace BarrageGrab.GrabServices
                 Level = (int)data.Level,
                 PayLevel = (int)(data.PayGrade?.Level ?? -1),
                 NickName = data.NickName ?? "用户" + data.DisplayId,
-                Avatar = data.AvatarThumb?.UrlListList?.FirstOrDefault() ?? "",
+                Avatar = data.AvatarThumb?.UrlListList?.FirstOrDefault() ?? string.Empty,
                 SecUid = data.SecUid,
                 FollowerCount = (long)(data.FollowInfo?.FollowerCount ?? 0),
                 FollowingCount = (long)(data.FollowInfo?.FollowingCount ?? 0),
                 FollowStatus = (long)(data.FollowInfo?.FollowStatus ?? 0)
             };
 
-            if (data.FansClub != null && data.FansClub.Data != null)
+            if (data.FansClub?.Data != null)
             {
-                user.FansClub = new DouyinFansClub()
+                user.FansClub = new DouyinFansClub
                 {
                     ClubName = data.FansClub.Data.ClubName,
                     Level = data.FansClub.Data.Level
@@ -774,9 +661,17 @@ namespace BarrageGrab.GrabServices
 
             return user;
         }
-        #endregion
 
+        public void Dispose()
+        {
+            if (disposed)
+            {
+                return;
+            }
 
-        #endregion
+            Stop();
+            disposed = true;
+            GC.SuppressFinalize(this);
+        }
     }
 }
