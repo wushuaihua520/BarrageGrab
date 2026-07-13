@@ -1,7 +1,3 @@
-using BarrageGrab.Entity.Enums;
-using BarrageGrab.Framework;
-using Google.Protobuf.WellKnownTypes;
-
 namespace BarrageGrab
 {
     public partial class MainWindow : Form
@@ -29,29 +25,29 @@ namespace BarrageGrab
 
             this.lblLocalWebSocket_Location.Text = GlobalConfigs.LocalWebSocketServer_Location;
 
-            #region Platform
-            var platformList = new List<KeyValuePair<string, int>>();
-            platformList.Add(new KeyValuePair<string, int>("¶¶Òô", 1));
-
-            #endregion
-
-
         }
 
         public void PrintConsole(string message)
         {
-            this.Invoke(new Action(() =>
+            if (IsDisposed)
             {
-                this.txtConsole.AppendText(message + "\r\n");
-                this.txtConsole.ScrollToCaret();
+                return;
+            }
 
-                if (++printCount > 10000)
-                {
-                    printCount = 0;
-                    this.txtConsole.Clear();
-                }
-            }));
+            if (InvokeRequired)
+            {
+                BeginInvoke(PrintConsole, message);
+                return;
+            }
 
+            txtConsole.AppendText(message + "\r\n");
+            txtConsole.ScrollToCaret();
+
+            if (++printCount > 10000)
+            {
+                printCount = 0;
+                txtConsole.Clear();
+            }
         }
 
         private void MainWindow_FormClosed(object sender, FormClosedEventArgs e)

@@ -22,11 +22,8 @@ namespace BarrageGrab
         {
             get
             {
-                if (_mainWindow == null)
-                {
-                    _mainWindow = new MainWindow();
-                }
-
+                _mainWindow ??= new MainWindow();
+                MainWindow ??= _mainWindow;
                 return _mainWindow;
             }
         }
