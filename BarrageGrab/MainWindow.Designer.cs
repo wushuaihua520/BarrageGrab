@@ -285,7 +285,7 @@
             label4.Name = "label4";
             label4.Size = new Size(54, 17);
             label4.TabIndex = 0;
-            label4.Text = "LiveId：";
+            label4.Text = "直播间：";
             // 
             // label3
             // 
@@ -343,8 +343,8 @@
             Name = "MainWindow";
             Padding = new Padding(10, 7, 10, 7);
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "抖音快手Tiktok视频号WSS弹幕助手(v1.8.0) by 吴所畏惧 VX：xhhdqq";
-            FormClosed += MainWindow_FormClosed;
+            Text = "BarrageGrab";
+            FormClosing += MainWindow_FormClosing;
             Load += MainWindow_Load;
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();

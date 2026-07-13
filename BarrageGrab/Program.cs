@@ -2,21 +2,40 @@ namespace BarrageGrab
 {
     internal static class Program
     {
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
         [STAThread]
-        static void Main()
+        private static void Main()
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (_, args) => ShowFatalError(args.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception ex)
+                {
+                    ShowFatalError(ex);
+                }
+            };
+
             ApplicationConfiguration.Initialize();
 
-            //注册服务
-            ServiceRegistrar.BuildServices();
+            try
+            {
+                ServiceRegistrar.BuildServices();
+                Application.Run(new MainWindow());
+            }
+            finally
+            {
+                ApplicationRuntime.Shutdown();
+            }
+        }
 
-            //运行主窗体
-            Application.Run(ApplicationRuntime.MainForm);
+        private static void ShowFatalError(Exception exception)
+        {
+            var message = exception?.Message ?? "未知错误";
+            MessageBox.Show(
+                $"程序发生未处理异常：{message}",
+                "BarrageGrab",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
     }
 }
