@@ -693,6 +693,7 @@ namespace BarrageGrab.GrabServices
                 string body = JsonConvert.SerializeObject(new SignWssRequest()
                 {
                     //临时apikey，如需申请独立apikey，请联系博主
+                    //临时apikey仅供测试使用，请勿用于生产环境，恶意请求将自动永久封禁ip
                     ApiKey = GlobalConfigs.SignApi_Key,
 
                     //根据实际情况填写
